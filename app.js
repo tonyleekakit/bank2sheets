@@ -277,10 +277,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (googleLoginBtn) {
         googleLoginBtn.addEventListener('click', async () => {
             try {
+                // Determine the correct redirect URL
+                // If running locally (127.0.0.1 or localhost), use that.
+                // Otherwise, use the production URL or let Supabase use its default Site URL.
+                const redirectUrl = window.location.origin; // This captures http://127.0.0.1:5500 or https://your-site.com
+                
                 const { data, error } = await supabase.auth.signInWithOAuth({
                     provider: 'google',
                     options: {
-                        redirectTo: window.location.origin // Redirect back to current domain
+                        redirectTo: redirectUrl
                     }
                 });
                 if (error) throw error;
@@ -293,26 +298,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Stripe Payment Logic ---
     const subscribeMonthlyBtn = document.getElementById('subscribe-monthly-btn');
+    const subscribeYearlyBtn = document.getElementById('subscribe-yearly-btn');
+    
     // 請將您的 Stripe Payment Link 填入此處
-    const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/eVq7sMdp0aqI77Ta7u28800'; 
+    const STRIPE_MONTHLY_LINK = 'https://buy.stripe.com/eVq7sMdp0aqI77Ta7u28800'; 
+    const STRIPE_YEARLY_LINK = 'https://buy.stripe.com/14A14o70C7ewak53J628801'; // 請填入年費連結
 
     if (subscribeMonthlyBtn) {
-        subscribeMonthlyBtn.addEventListener('click', async () => {
-            // 1. Check if user is logged in
-            const { data: { user } } = await supabase.auth.getUser();
-            
-            if (!user) {
-                // If not logged in, redirect to auth page
-                alert(translations[currentLang]['login_required'] || 'Please login first');
-                window.location.href = 'auth.html';
-                return;
-            }
+        subscribeMonthlyBtn.addEventListener('click', () => handleSubscription(STRIPE_MONTHLY_LINK));
+    }
 
-            // 2. Redirect to Stripe with user email pre-filled
-            // We append the user's email to the URL so Stripe knows who is paying
-            const paymentUrl = `${STRIPE_PAYMENT_LINK}?prefilled_email=${encodeURIComponent(user.email)}`;
-            window.location.href = paymentUrl;
-        });
+    if (subscribeYearlyBtn) {
+        subscribeYearlyBtn.addEventListener('click', () => handleSubscription(STRIPE_YEARLY_LINK));
+    }
+
+    async function handleSubscription(paymentLink) {
+        // 1. Check if user is logged in
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+            // If not logged in, redirect to auth page
+            alert(translations[currentLang]['login_required'] || 'Please login first');
+            window.location.href = 'auth.html';
+            return;
+        }
+
+        if (!paymentLink || paymentLink.includes('YOUR_')) {
+            alert('Payment link not configured yet.');
+            return;
+        }
+
+        // 2. Redirect to Stripe with user email pre-filled
+        const paymentUrl = `${paymentLink}?prefilled_email=${encodeURIComponent(user.email)}`;
+        window.location.href = paymentUrl;
     }
 
     // Existing File Upload Logic (Only if on homepage)
