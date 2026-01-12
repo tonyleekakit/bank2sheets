@@ -1,0 +1,11 @@
+# Node.js Dependencies
+node_modules/
+package-lock.json
+.DS_Store
+
+# Environment Variables
+.env
+.env.local
+
+# Build output
+dist/
