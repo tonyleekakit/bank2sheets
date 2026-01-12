@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'upgrade': '升級',
             'login': '登入',
             'logout': '登出',
-            'hero_title': '首個可以轉換中英文銀行月結單的網站',
+            'hero_title': '首個支援中英文銀行月結單的網站',
             'hero_subtitle': '專業、準確、安全。將您的 PDF 月結單即時轉換為 Excel 格式。',
             'dropzone_title': '點擊或拖放 PDF 檔案至此處',
             'dropzone_subtitle': '支援各大銀行月結單',
@@ -395,19 +395,44 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        function uploadFile(file) {
-            // Mock upload process
-            const titleElement = dropZone.querySelector('h3'); // Use h3 directly or data-i18n selector
+        async function uploadFile(file) {
+            // UI Update
+            const titleElement = dropZone.querySelector('h3');
             const originalTextKey = titleElement.getAttribute('data-i18n');
+            const originalText = titleElement.textContent;
             
             titleElement.textContent = `${translations[currentLang]['processing']}: ${file.name}...`;
             
-            setTimeout(() => {
+            try {
+                // 1. Generate a unique file name
+                // Format: timestamp_random_filename
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+                const filePath = `${fileName}`;
+
+                // 2. Upload to Supabase Storage
+                const { data, error } = await supabase.storage
+                    .from('uploads')
+                    .upload(filePath, file);
+
+                if (error) throw error;
+
+                // 3. Success Feedback
                 let msg = translations[currentLang]['success_msg'].replace('{filename}', file.name);
                 alert(msg);
+                console.log('File uploaded:', data);
+
+                // TODO: Trigger backend conversion process here (Phase 5)
+
+            } catch (error) {
+                console.error('Upload error:', error);
+                alert('Upload failed: ' + error.message);
+            } finally {
                 // Restore original text
-                titleElement.textContent = translations[currentLang][originalTextKey];
-            }, 1500);
+                titleElement.textContent = originalText;
+                // Reset file input
+                fileInput.value = '';
+            }
         }
     }
 });
