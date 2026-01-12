@@ -417,16 +417,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (error) throw error;
 
-                // 3. Success Feedback
-                let msg = translations[currentLang]['success_msg'].replace('{filename}', file.name);
-                alert(msg);
-                console.log('File uploaded:', data);
+                // 3. Trigger backend conversion process
+                console.log('Starting conversion...');
+                titleElement.textContent = translations[currentLang]['processing'] + ' (AI Converting)...';
 
-                // TODO: Trigger backend conversion process here (Phase 5)
+                const { data: { user } } = await supabase.auth.getUser();
+                const userId = user ? user.id : 'anon';
+
+                // Call Google Cloud Run Backend
+                const response = await fetch('https://bank2sheets-converter-202541778800.asia-east1.run.app/convert', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        file_path: filePath,
+                        user_id: userId
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Conversion failed on server');
+                }
+
+                // 4. Success & Download
+                console.log('Conversion success:', result);
+                
+                // Create a download link
+                const downloadLink = document.createElement('a');
+                downloadLink.href = result.download_url;
+                downloadLink.download = file.name.replace('.pdf', '.xlsx');
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+
+                let msg = translations[currentLang]['success_msg'].replace('{filename}', file.name);
+                alert(msg + '\n\nExcel file is downloading...');
 
             } catch (error) {
-                console.error('Upload error:', error);
-                alert('Upload failed: ' + error.message);
+                console.error('Upload/Conversion error:', error);
+                alert('Error: ' + error.message);
             } finally {
                 // Restore original text
                 titleElement.textContent = originalText;
