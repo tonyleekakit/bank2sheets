@@ -1,3 +1,5 @@
+import { supabase } from './supabaseClient.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     // Language Switcher Logic
     const langBtn = document.getElementById('lang-btn');
@@ -14,8 +16,10 @@ document.addEventListener('DOMContentLoaded', () => {
             'doc_title_upgrade': '升級 - BANK2SHEETS',
             'doc_title_privacy': '私隱權政策 - BANK2SHEETS',
             'doc_title_terms': '條款及細則 - BANK2SHEETS',
+            'doc_title_login': '登入 - BANK2SHEETS',
             'upgrade': '升級',
             'login': '登入',
+            'logout': '登出',
             'hero_title': '首個可以轉換中英文銀行月結單的網站',
             'hero_subtitle': '專業、準確、安全。將您的 PDF 月結單即時轉換為 Excel 格式。',
             'dropzone_title': '點擊或拖放 PDF 檔案至此處',
@@ -67,15 +71,35 @@ document.addEventListener('DOMContentLoaded', () => {
             // Footer
             'privacy_policy': '私隱權政策',
             'terms_of_service': '條款及細則',
-            'contact_us': '聯絡我們'
+            'contact_us': '聯絡我們',
+            // Auth Page
+            'login_title': '登入帳戶',
+            'register_title': '註冊帳戶',
+            'login_subtitle': '歡迎回來，請輸入您的資料',
+            'register_subtitle': '建立新帳戶以享受更多功能',
+            'email_label': '電子郵件',
+            'password_label': '密碼',
+            'login_btn': '登入',
+            'register_btn': '註冊',
+            'no_account': '還沒有帳戶？',
+            'has_account': '已經有帳戶？',
+            'register_link': '立即註冊',
+            'login_link': '立即登入',
+            'auth_success_login': '登入成功！',
+            'auth_success_register': '註冊成功！請檢查您的郵箱以驗證帳戶。',
+            'auth_error_generic': '發生錯誤，請稍後再試。',
+            'continue_with_google': '使用 Google 帳號繼續',
+            'or_email': '或使用電子郵件'
         },
         'en': {
             'doc_title_home': 'BANK2SHEETS - Convert Bank Statements to Excel',
             'doc_title_upgrade': 'Upgrade - BANK2SHEETS',
             'doc_title_privacy': 'Privacy Policy - BANK2SHEETS',
             'doc_title_terms': 'Terms of Service - BANK2SHEETS',
+            'doc_title_login': 'Login - BANK2SHEETS',
             'upgrade': 'Upgrade',
             'login': 'Login',
+            'logout': 'Logout',
             'hero_title': 'The First Website to Convert Chinese & English Bank Statements',
             'hero_subtitle': 'Professional, Accurate, Secure. Convert your PDF bank statements to Excel instantly.',
             'dropzone_title': 'Click or Drop PDF Files Here',
@@ -127,7 +151,25 @@ document.addEventListener('DOMContentLoaded', () => {
             // Footer
             'privacy_policy': 'Privacy Policy',
             'terms_of_service': 'Terms of Service',
-            'contact_us': 'Contact Us'
+            'contact_us': 'Contact Us',
+            // Auth Page
+            'login_title': 'Login',
+            'register_title': 'Create Account',
+            'login_subtitle': 'Welcome back, please enter your details',
+            'register_subtitle': 'Create an account to enjoy more features',
+            'email_label': 'Email',
+            'password_label': 'Password',
+            'login_btn': 'Login',
+            'register_btn': 'Sign Up',
+            'no_account': 'Don\'t have an account?',
+            'has_account': 'Already have an account?',
+            'register_link': 'Sign Up Now',
+            'login_link': 'Login Now',
+            'auth_success_login': 'Login Successful!',
+            'auth_success_register': 'Registration Successful! Please check your email to verify your account.',
+            'auth_error_generic': 'An error occurred, please try again later.',
+            'continue_with_google': 'Continue with Google',
+            'or_email': 'Or continue with email'
         }
     };
 
@@ -177,12 +219,100 @@ document.addEventListener('DOMContentLoaded', () => {
         if (path.includes('upgrade.html')) titleKey = 'doc_title_upgrade';
         else if (path.includes('privacy.html')) titleKey = 'doc_title_privacy';
         else if (path.includes('terms.html')) titleKey = 'doc_title_terms';
+        else if (path.includes('auth.html')) titleKey = 'doc_title_login';
         
         if (translations[lang][titleKey]) {
             document.title = translations[lang][titleKey];
         }
 
         document.documentElement.lang = lang === 'zh' ? 'zh-HK' : 'en';
+    }
+
+    // --- Auth State Management ---
+    checkUser();
+
+    async function checkUser() {
+        const { data: { user } } = await supabase.auth.getUser();
+        updateUI(user);
+    }
+
+    function updateUI(user) {
+        const loginBtns = document.querySelectorAll('[data-i18n="login"]');
+        
+        if (user) {
+            // User is logged in
+            loginBtns.forEach(btn => {
+                btn.setAttribute('data-i18n', 'logout');
+                btn.textContent = translations[currentLang]['logout'];
+                btn.onclick = handleLogout;
+                // Remove existing event listeners by cloning
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                newBtn.onclick = handleLogout;
+            });
+        } else {
+            // User is logged out
+            loginBtns.forEach(btn => {
+                btn.setAttribute('data-i18n', 'login');
+                btn.textContent = translations[currentLang]['login'];
+                btn.onclick = () => window.location.href = 'auth.html';
+                // Remove existing event listeners
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                newBtn.onclick = () => window.location.href = 'auth.html';
+            });
+        }
+    }
+
+    async function handleLogout() {
+        const { error } = await supabase.auth.signOut();
+        if (!error) {
+            window.location.reload();
+        }
+    }
+
+    // --- Auth Page Logic ---
+    const googleLoginBtn = document.getElementById('google-login-btn');
+    
+    if (googleLoginBtn) {
+        googleLoginBtn.addEventListener('click', async () => {
+            try {
+                const { data, error } = await supabase.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                        redirectTo: window.location.origin // Redirect back to current domain
+                    }
+                });
+                if (error) throw error;
+            } catch (error) {
+                console.error('Google login error:', error);
+                alert(error.message);
+            }
+        });
+    }
+
+    // --- Stripe Payment Logic ---
+    const subscribeMonthlyBtn = document.getElementById('subscribe-monthly-btn');
+    // 請將您的 Stripe Payment Link 填入此處
+    const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/eVq7sMdp0aqI77Ta7u28800'; 
+
+    if (subscribeMonthlyBtn) {
+        subscribeMonthlyBtn.addEventListener('click', async () => {
+            // 1. Check if user is logged in
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (!user) {
+                // If not logged in, redirect to auth page
+                alert(translations[currentLang]['login_required'] || 'Please login first');
+                window.location.href = 'auth.html';
+                return;
+            }
+
+            // 2. Redirect to Stripe with user email pre-filled
+            // We append the user's email to the URL so Stripe knows who is paying
+            const paymentUrl = `${STRIPE_PAYMENT_LINK}?prefilled_email=${encodeURIComponent(user.email)}`;
+            window.location.href = paymentUrl;
+        });
     }
 
     // Existing File Upload Logic (Only if on homepage)
