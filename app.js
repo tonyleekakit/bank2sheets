@@ -328,8 +328,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 2. Redirect to Stripe with user email pre-filled
-        const paymentUrl = `${paymentLink}?prefilled_email=${encodeURIComponent(user.email)}`;
+        // 3. Determine locale
+        // Stripe uses 'zh-HK' for Traditional Chinese, 'en' for English
+        const stripeLocale = currentLang === 'zh' ? 'zh-HK' : 'en';
+
+        // 2. Redirect to Stripe with user email pre-filled AND locale
+        const paymentUrl = `${paymentLink}?prefilled_email=${encodeURIComponent(user.email)}&locale=${stripeLocale}`;
         window.location.href = paymentUrl;
     }
 
