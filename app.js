@@ -21,9 +21,9 @@ const translations = {
         'login': '登入',
         'logout': '登出',
         'hero_title': '首個支援中英文銀行月結單的網站',
-        'hero_subtitle': '專業、準確、安全。將您的 PDF 月結單即時轉換為 Excel 格式。',
-        'dropzone_title': '點擊或拖放 PDF 檔案至此處',
-        'dropzone_subtitle': '支援各大銀行月結單',
+        'hero_subtitle': '專業、準確、安全。將您的 PDF 或圖片月結單即時轉換為 Excel 格式。',
+        'dropzone_title': '點擊或拖放 PDF/圖片檔案至此處',
+        'dropzone_subtitle': '支援各大銀行月結單 (PDF, JPG, PNG)',
         'select_file': '選擇檔案',
         'features_title': '網站優點',
         'feature1_title': '快速轉換',
@@ -50,7 +50,7 @@ const translations = {
         'plan3_limit': '不限次數轉換',
         'plan3_desc': '專業人士的最佳選擇',
         'plan3_btn': '立即升級',
-        'alert_pdf_only': '請上載 PDF 檔案格式',
+        'alert_pdf_only': '請上載支援的檔案格式 (PDF, JPG, PNG, TIFF, GIF, BMP)',
         'processing': '正在處理',
         'preview_title': '預覽第一頁',
         'remaining_quota': '今日剩餘次數:',
@@ -105,9 +105,9 @@ const translations = {
         'login': 'Login',
         'logout': 'Logout',
         'hero_title': 'The First Website to Convert Chinese & English Bank Statements',
-        'hero_subtitle': 'Professional, Accurate, Secure. Convert your PDF bank statements to Excel instantly.',
-        'dropzone_title': 'Click or Drop PDF Files Here',
-        'dropzone_subtitle': 'Supports Major Bank Statements',
+        'hero_subtitle': 'Professional, Accurate, Secure. Convert your PDF ements to Excel instantly.',
+        'dropzone_title': 'Click or Drop PDF Here',
+        'dropzone_subtitle': 'Supports Major Bank Statements
         'select_file': 'Select File',
         'features_title': 'Features',
         'feature1_title': 'Fast Conversion',
@@ -134,7 +134,7 @@ const translations = {
         'plan3_limit': 'Unlimited Conversions',
         'plan3_desc': 'Best for Professionals',
         'plan3_btn': 'Upgrade Now',
-        'alert_pdf_only': 'Please upload PDF files only',
+        'alert_pdf_only': 'Please upload supported file formats (PDF, JPG, PNG, TIFF, GIF, BMP)',
         'processing': 'Processing',
         'success_msg': 'Success!\n\nFile "{filename}" is ready for conversion.\n(This is a demo page, backend connection required for actual conversion)',
         // Upgrade Page
@@ -518,7 +518,17 @@ if (dropZone && fileInput) {
     function handleFiles(files) {
         if (files.length > 0) {
             const file = files[0];
-            if (file.type === 'application/pdf') {
+            // Define supported MIME types
+            const supportedTypes = [
+                'application/pdf', 
+                'image/jpeg', 
+                'image/png', 
+                'image/tiff', 
+                'image/gif', 
+                'image/bmp'
+            ];
+            
+            if (supportedTypes.includes(file.type)) {
                 // Check Usage before Upload
                 if (checkUsage()) {
                     uploadFile(file);
