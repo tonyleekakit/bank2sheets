@@ -485,23 +485,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Usage & History Logic ---
         function getUsageKey(userId) {
-            const today = new Date().toISOString().split('T')[0];
-            return `usage_${today}_${userId}`;
+            return `usage_timestamps_${userId}`;
+        }
+
+        function getRecentUsage(userId) {
+            const key = getUsageKey(userId);
+            const raw = localStorage.getItem(key);
+            let timestamps = [];
+            try {
+                timestamps = raw ? JSON.parse(raw) : [];
+                if (!Array.isArray(timestamps)) timestamps = [];
+            } catch (e) {
+                console.warn('Resetting usage history due to parse error', e);
+                timestamps = [];
+            }
+            
+            // Filter out timestamps older than 24 hours
+            const now = Date.now();
+            const oneDayMs = 24 * 60 * 60 * 1000;
+            timestamps = timestamps.filter(ts => (now - ts) < oneDayMs);
+            
+            // Update storage if we filtered anything (lazy cleanup)
+            if (timestamps.length !== (raw ? JSON.parse(raw).length : 0)) {
+                localStorage.setItem(key, JSON.stringify(timestamps));
+            }
+            
+            return timestamps;
         }
 
         function checkUsage() {
             const userId = currentUser ? currentUser.id : 'guest';
-            const key = getUsageKey(userId);
-            const usage = parseInt(localStorage.getItem(key) || '0');
+            const timestamps = getRecentUsage(userId);
+            const usage = timestamps.length;
             
             // Limits
             let limit = 1; // Guest
             if (currentUser) limit = 5; // Registered
-            // Mock Premium Check (if user metadata has plan)
-            // if (currentUser?.app_metadata?.plan === 'premium') limit = 9999;
             
             if (usage >= limit) {
-                showToast(`Daily limit reached (${usage}/${limit}). Please upgrade or try again tomorrow.`, 'error');
+                // Calculate when the next slot frees up
+                const oldest = timestamps[0]; // timestamps are sorted by push order (oldest first)
+                const oneDayMs = 24 * 60 * 60 * 1000;
+                const nextFreeTime = new Date(oldest + oneDayMs);
+                const timeString = nextFreeTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
+                showToast(`Daily limit reached (${usage}/${limit}). Next conversion available at ${timeString}.`, 'error');
                 return false;
             }
             return true;
@@ -509,9 +537,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         function incrementUsage() {
             const userId = currentUser ? currentUser.id : 'guest';
-            const key = getUsageKey(userId);
-            const usage = parseInt(localStorage.getItem(key) || '0');
-            localStorage.setItem(key, usage + 1);
+            const timestamps = getRecentUsage(userId);
+            
+            timestamps.push(Date.now());
+            localStorage.setItem(getUsageKey(userId), JSON.stringify(timestamps));
+            
             updateQuotaUI();
         }
 
@@ -522,8 +552,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!display || !countSpan) return;
 
             const userId = currentUser ? currentUser.id : 'guest';
-            const key = getUsageKey(userId);
-            const usage = parseInt(localStorage.getItem(key) || '0');
+            const usage = getRecentUsage(userId).length;
             
             let limit = 1;
             if (currentUser) limit = 5;
