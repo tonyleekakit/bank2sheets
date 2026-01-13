@@ -317,34 +317,37 @@ function showToast(message, type = 'info') {
     }
 
     function updateQuotaUI() {
-        const display = document.getElementById('usage-display');
-        const countSpan = document.getElementById('quota-count');
+    // Re-read currentLang to ensure it's up to date
+    currentLang = localStorage.getItem('preferredLang') || 'zh';
+    
+    const display = document.getElementById('usage-display');
+    const countSpan = document.getElementById('quota-count');
+    
+    if (!display) return; // Note: countSpan might be null in Pro mode UI replacement
+
+    // Show the display
+    display.classList.remove('hidden');
+
+    if (currentUser && currentUser.is_pro) {
+        // Pro User Display
+        const text = currentLang === 'zh' ? '✨ 已升級無限轉換' : '✨ Unlimited Access';
+        display.innerHTML = `<span class="font-bold" style="color: #2e7d32;">${text}</span>`;
+        display.style.backgroundColor = '#e8f5e9'; // Light green background
+        display.style.border = '1px solid #c8e6c9';
+    } else {
+        // Normal User/Guest Display
+        const limit = currentUser ? USAGE_LIMITS.user : USAGE_LIMITS.guest;
+        const used = getRecentUsage().length;
+        const remaining = Math.max(0, limit - used);
         
-        if (!display) return; // Note: countSpan might be null in Pro mode UI replacement
-
-        // Show the display
-        display.classList.remove('hidden');
-
-        if (currentUser && currentUser.is_pro) {
-            // Pro User Display
-            const text = currentLang === 'zh' ? '✨ 已升級無限轉換' : '✨ Unlimited Access';
-            display.innerHTML = `<span class="font-bold" style="color: #2e7d32;">${text}</span>`;
-            display.style.backgroundColor = '#e8f5e9'; // Light green background
-            display.style.border = '1px solid #c8e6c9';
-        } else {
-            // Normal User/Guest Display
-            const limit = currentUser ? USAGE_LIMITS.user : USAGE_LIMITS.guest;
-            const used = getRecentUsage().length;
-            const remaining = Math.max(0, limit - used);
-            
-            const label = translations[currentLang]['remaining_quota'];
-            display.innerHTML = `<span data-i18n="remaining_quota">${label}</span> <span id="quota-count" class="font-bold">${remaining}</span>`;
-            
-            // Reset styles
-            display.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
-            display.style.border = 'none';
-        }
+        const label = translations[currentLang]['remaining_quota'];
+        display.innerHTML = `<span data-i18n="remaining_quota">${label}</span> <span id="quota-count" class="font-bold">${remaining}</span>`;
+        
+        // Reset styles
+        display.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
+        display.style.border = 'none';
     }
+}
 
 // --- Auth State Management ---
 checkUser();
