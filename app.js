@@ -275,8 +275,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateUI(user) {
+        currentUser = user; // Update global user
         const loginBtns = document.querySelectorAll('[data-i18n="login"]');
         
+        // Update Quota and History UI (if elements exist)
+        if (typeof updateQuotaUI === 'function') updateQuotaUI();
+        if (typeof loadHistory === 'function') loadHistory();
+
         if (user) {
             // User is logged in
             loginBtns.forEach(btn => {
@@ -426,226 +431,24 @@ document.addEventListener('DOMContentLoaded', () => {
             if (files.length > 0) {
                 const file = files[0];
                 if (file.type === 'application/pdf') {
-                    // Preview First
-                    previewPDF(file);
-                    // Check Usage before Upload
-                    if (checkUsage()) {
-                        uploadFile(file);
-                    }
+                    uploadFile(file);
                 } else {
-                    showToast(translations[currentLang]['alert_pdf_only'], 'error');
+                    alert(translations[currentLang]['alert_pdf_only']);
                 }
-            }
-        }
-
-        async function previewPDF(file) {
-            const previewContainer = document.getElementById('preview-container');
-            const canvas = document.getElementById('pdf-preview');
-            const closeBtn = document.getElementById('close-preview');
-            
-            if (!previewContainer || !canvas) return;
-
-            try {
-                const arrayBuffer = await file.arrayBuffer();
-                const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-                const page = await pdf.getPage(1);
-                
-                // Adjust scale to fit container width if needed, or fixed scale
-                // For simplicity, use scale 1.0 or 1.2
-                const viewport = page.getViewport({ scale: 1.0 });
-                
-                // Responsive Scaling
-                const containerWidth = dropZone.offsetWidth - 40; // padding
-                const scale = containerWidth / viewport.width;
-                const scaledViewport = page.getViewport({ scale: Math.min(1.2, scale) });
-
-                const context = canvas.getContext('2d');
-                canvas.height = scaledViewport.height;
-                canvas.width = scaledViewport.width;
-                
-                const renderContext = {
-                    canvasContext: context,
-                    viewport: scaledViewport
-                };
-                
-                await page.render(renderContext).promise;
-                
-                previewContainer.classList.add('show');
-                
-                if (closeBtn) {
-                    closeBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        previewContainer.classList.remove('show');
-                    };
-                }
-            } catch (e) {
-                console.error('Preview error:', e);
-            }
-        }
-
-        // --- Usage & History Logic ---
-        function getUsageKey(userId) {
-            return `usage_timestamps_${userId}`;
-        }
-
-        function getRecentUsage(userId) {
-            const key = getUsageKey(userId);
-            const raw = localStorage.getItem(key);
-            let timestamps = [];
-            try {
-                timestamps = raw ? JSON.parse(raw) : [];
-                if (!Array.isArray(timestamps)) timestamps = [];
-            } catch (e) {
-                console.warn('Resetting usage history due to parse error', e);
-                timestamps = [];
-            }
-            
-            // Filter out timestamps older than 24 hours
-            const now = Date.now();
-            const oneDayMs = 24 * 60 * 60 * 1000;
-            timestamps = timestamps.filter(ts => (now - ts) < oneDayMs);
-            
-            // Update storage if we filtered anything (lazy cleanup)
-            if (timestamps.length !== (raw ? JSON.parse(raw).length : 0)) {
-                localStorage.setItem(key, JSON.stringify(timestamps));
-            }
-            
-            return timestamps;
-        }
-
-        function checkUsage() {
-            const userId = currentUser ? currentUser.id : 'guest';
-            const timestamps = getRecentUsage(userId);
-            const usage = timestamps.length;
-            
-            // Limits
-            let limit = 1; // Guest
-            if (currentUser) limit = 5; // Registered
-            
-            if (usage >= limit) {
-                // Calculate when the next slot frees up
-                const oldest = timestamps[0]; // timestamps are sorted by push order (oldest first)
-                const oneDayMs = 24 * 60 * 60 * 1000;
-                const nextFreeTime = new Date(oldest + oneDayMs);
-                const timeString = nextFreeTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                
-                showToast(`Daily limit reached (${usage}/${limit}). Next conversion available at ${timeString}.`, 'error');
-                return false;
-            }
-            return true;
-        }
-
-        function incrementUsage() {
-            const userId = currentUser ? currentUser.id : 'guest';
-            const timestamps = getRecentUsage(userId);
-            
-            timestamps.push(Date.now());
-            localStorage.setItem(getUsageKey(userId), JSON.stringify(timestamps));
-            
-            updateQuotaUI();
-        }
-
-        function updateQuotaUI() {
-            const display = document.getElementById('usage-display');
-            const countSpan = document.getElementById('quota-count');
-            
-            if (!display || !countSpan) return;
-
-            const userId = currentUser ? currentUser.id : 'guest';
-            const usage = getRecentUsage(userId).length;
-            
-            let limit = 1;
-            if (currentUser) limit = 5;
-            
-            const remaining = Math.max(0, limit - usage);
-            countSpan.textContent = remaining;
-            
-            // Show for all users (Guest or Registered)
-            display.classList.remove('hidden');
-        }
-
-        function saveHistory(fileName, downloadUrl) {
-            if (!currentUser) return; // Only save for registered users
-            
-            const historyKey = `history_${currentUser.id}`;
-            const history = JSON.parse(localStorage.getItem(historyKey) || '[]');
-            
-            history.unshift({
-                name: fileName,
-                url: downloadUrl,
-                date: new Date().toLocaleString()
-            });
-            
-            // Limit to last 20
-            if (history.length > 20) history.pop();
-            
-            localStorage.setItem(historyKey, JSON.stringify(history));
-            loadHistory();
-        }
-
-        function loadHistory() {
-            const section = document.getElementById('history-section');
-            const list = document.getElementById('history-list');
-            
-            if (!section || !list) return;
-            
-            if (!currentUser) {
-                section.classList.remove('show');
-                return;
-            }
-            
-            section.classList.add('show');
-            const historyKey = `history_${currentUser.id}`;
-            const history = JSON.parse(localStorage.getItem(historyKey) || '[]');
-            
-            if (history.length === 0) {
-                list.innerHTML = `<div class="empty-history" data-i18n="no_history">暫無記錄</div>`;
-            } else {
-                list.innerHTML = history.map(item => `
-                    <div class="history-item">
-                        <div class="history-info">
-                            <div class="history-name">${item.name}</div>
-                            <div class="history-date">${item.date}</div>
-                        </div>
-                        <a href="${item.url}" class="btn btn-sm btn-outline" download>下載</a>
-                    </div>
-                `).join('');
             }
         }
 
         async function uploadFile(file) {
-            // UI Elements
+            // UI Update
             const titleElement = dropZone.querySelector('h3');
             const originalTextKey = titleElement.getAttribute('data-i18n');
-            const originalText = titleElement.textContent; // Fallback
+            const originalText = titleElement.textContent;
             
-            const progressWrapper = document.getElementById('progress-wrapper');
-            const progressBar = document.getElementById('progress-bar');
-            const progressPercent = document.getElementById('progress-percent');
-            const progressStatus = document.getElementById('progress-status');
-
-            // Show Progress UI
-            if (progressWrapper) progressWrapper.classList.add('show');
-            if (progressBar) progressBar.style.width = '0%';
-            if (progressPercent) progressPercent.textContent = '0%';
-            if (progressStatus) progressStatus.textContent = translations[currentLang]['processing'];
-
-            // Simulate Progress (since we can't easily track fetch upload/processing progress)
-            let progress = 0;
-            const progressInterval = setInterval(() => {
-                if (progress < 90) {
-                    // Slow down as it gets higher
-                    const increment = (90 - progress) / 20; 
-                    progress += Math.max(0.5, increment * Math.random());
-                    if (progress > 90) progress = 90;
-                    
-                    if (progressBar) progressBar.style.width = `${progress}%`;
-                    if (progressPercent) progressPercent.textContent = `${Math.round(progress)}%`;
-                }
-            }, 200);
+            titleElement.textContent = `${translations[currentLang]['processing']}: ${file.name}...`;
             
             try {
                 // 1. Generate a unique file name
+                // Format: timestamp_random_filename
                 const fileExt = file.name.split('.').pop();
                 const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
                 const filePath = `${fileName}`;
@@ -659,7 +462,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // 3. Trigger backend conversion process
                 console.log('Starting conversion...');
-                
+                titleElement.textContent = translations[currentLang]['processing'] + ' (AI Converting)...';
+
                 const { data: { user } } = await supabase.auth.getUser();
                 const userId = user ? user.id : 'anon';
 
@@ -684,15 +488,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 4. Success & Download
                 console.log('Conversion success:', result);
                 
-                // Complete Progress
-                clearInterval(progressInterval);
-                if (progressBar) progressBar.style.width = '100%';
-                if (progressPercent) progressPercent.textContent = '100%';
-
-                // Update Usage & History
-                incrementUsage();
-                saveHistory(file.name, result.download_url);
-                
                 // Create a download link
                 const downloadLink = document.createElement('a');
                 downloadLink.href = result.download_url;
@@ -702,24 +497,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.body.removeChild(downloadLink);
 
                 let msg = translations[currentLang]['success_msg'].replace('{filename}', file.name);
-                showToast(msg, 'success');
+                alert(msg + '\n\nExcel file is downloading...');
 
             } catch (error) {
-                clearInterval(progressInterval);
                 console.error('Upload/Conversion error:', error);
-                showToast('Error: ' + error.message, 'error');
-                if (progressBar) progressBar.style.backgroundColor = '#d32f2f'; // Red for error
+                alert('Error: ' + error.message);
             } finally {
-                // Restore original text and reset UI after delay
-                setTimeout(() => {
-                    if (progressWrapper) progressWrapper.classList.remove('show');
-                    // Reset progress bar color and width
-                    if (progressBar) {
-                        progressBar.style.width = '0%';
-                        progressBar.style.backgroundColor = ''; 
-                    }
-                }, 5000);
-                
+                // Restore original text
+                titleElement.textContent = originalText;
                 // Reset file input
                 fileInput.value = '';
             }

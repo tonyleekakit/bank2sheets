@@ -48,28 +48,6 @@
                 <p data-i18n="dropzone_subtitle">支援各大銀行月結單</p>
                 <input type="file" id="file-input" accept=".pdf" hidden>
                 <button class="btn btn-black" onclick="document.getElementById('file-input').click()" data-i18n="select_file">選擇檔案</button>
-                
-                <!-- Progress Bar -->
-                <div id="progress-wrapper" class="progress-wrapper">
-                    <div class="progress-container">
-                        <div id="progress-bar" class="progress-bar"></div>
-                    </div>
-                    <div class="progress-text">
-                        <span id="progress-status" data-i18n="processing">正在處理...</span>
-                        <span id="progress-percent">0%</span>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- History Section (Hidden for guests) -->
-        <section id="history-section" class="history-section hidden">
-            <div class="container">
-                <h2 data-i18n="history_title">轉換記錄</h2>
-                <div class="history-list" id="history-list">
-                    <!-- History items will be injected here -->
-                    <div class="empty-history" data-i18n="no_history">暫無記錄</div>
-                </div>
             </div>
         </section>
 
