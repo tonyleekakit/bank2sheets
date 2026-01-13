@@ -289,8 +289,8 @@ function showToast(message, type = 'info') {
     }
 
     function checkUsage() {
-        // 1. Check if user is pro (simplified for now)
-        const isPro = false; 
+        // 1. Check if user is pro
+        const isPro = currentUser && currentUser.is_pro; 
         if (isPro) return true;
 
         const limit = currentUser ? USAGE_LIMITS.user : USAGE_LIMITS.guest;
