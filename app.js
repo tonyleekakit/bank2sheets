@@ -180,33 +180,26 @@ const translations = {
 // Apply language immediately on load
 setLanguage(currentLang);
 
-// Use Event Delegation for Language Switcher (More robust)
-document.addEventListener('click', (e) => {
-    // 1. Handle Language Button Click
-    const btn = e.target.closest('#lang-btn');
-    if (btn) {
+if (langBtn && langMenu) {
+    langBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const menu = document.getElementById('lang-menu');
-        if (menu) menu.classList.toggle('show');
-        return;
-    }
+        langMenu.classList.toggle('show');
+    });
 
-    // 2. Handle Language Option Click
-    const option = e.target.closest('.lang-option');
-    if (option) {
-        const lang = option.getAttribute('data-lang');
-        setLanguage(lang);
-        const menu = document.getElementById('lang-menu');
-        if (menu) menu.classList.remove('show');
-        return;
-    }
+    document.addEventListener('click', (e) => {
+        if (!langMenu.contains(e.target) && !langBtn.contains(e.target)) {
+            langMenu.classList.remove('show');
+        }
+    });
 
-    // 3. Handle Outside Click (Close Menu)
-    const menu = document.getElementById('lang-menu');
-    if (menu && menu.classList.contains('show')) {
-        menu.classList.remove('show');
-    }
-});
+    langOptions.forEach(option => {
+        option.addEventListener('click', () => {
+            const lang = option.getAttribute('data-lang');
+            setLanguage(lang);
+            langMenu.classList.remove('show');
+        });
+    });
+}
 
 function setLanguage(lang) {
     currentLang = lang;
@@ -237,9 +230,6 @@ function setLanguage(lang) {
     }
 
     document.documentElement.lang = lang === 'zh' ? 'zh-HK' : 'en';
-
-    // Update UI elements that depend on currentLang (like the Pro badge)
-    updateQuotaUI();
 }
 
 // --- Toast Notification Logic ---
@@ -324,17 +314,14 @@ function showToast(message, type = 'info') {
     }
 
     function updateQuotaUI() {
-        // Re-read currentLang to ensure it's up to date
-        currentLang = localStorage.getItem('preferredLang') || 'zh';
-        
-    const display = document.getElementById('usage-display');
+        const display = document.getElementById('usage-display');
         const countSpan = document.getElementById('quota-count');
         
-    if (!display) return; // Note: countSpan might be null in Pro mode UI replacement
-    
+        if (!display) return; // Note: countSpan might be null in Pro mode UI replacement
+
         // Show the display
         display.classList.remove('hidden');
-    
+
         if (currentUser && currentUser.is_pro) {
             // Pro User Display
             const text = currentLang === 'zh' ? '✨ 已升級無限轉換' : '✨ Unlimited Access';
@@ -351,13 +338,13 @@ function showToast(message, type = 'info') {
             display.innerHTML = `<span data-i18n="remaining_quota">${label}</span> <span id="quota-count" class="font-bold">${remaining}</span>`;
             
             // Reset styles
-        display.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
-        display.style.border = 'none';
+            display.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
+            display.style.border = 'none';
+        }
     }
-}
 
 // --- Auth State Management ---
-checkUser();
+// checkUser(); - MOVED TO BOTTOM - MOVED TO BOTTOM
 
 async function checkUser() {
         const { data: { user } } = await supabase.auth.getUser();
@@ -618,3 +605,8 @@ if (dropZone && fileInput) {
         }
     }
 }
+
+// Initialize App
+// Move initialization to the end to ensure all functions and constants (like USAGE_LIMITS) are defined
+setLanguage(currentLang);
+checkUser();
