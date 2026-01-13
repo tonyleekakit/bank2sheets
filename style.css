@@ -497,3 +497,68 @@ footer {
     font-size: 0.9rem;
     color: var(--gray-dark);
 }
+
+/* Batch File List Styles */
+.file-list {
+    width: 100%;
+    margin-top: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.file-item {
+    background: white;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 0.8rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    text-align: left; /* Reset text align from center */
+}
+
+/* Ensure icons don't get too big */
+.file-icon {
+    font-size: 1.5rem;
+    margin-right: 0.8rem;
+    display: flex;
+    align-items: center;
+}
+
+.file-info {
+    display: flex;
+    align-items: center;
+    z-index: 1;
+    flex: 1;
+    min-width: 0; /* Allow truncation */
+}
+
+.file-details {
+    display: flex;
+    flex-direction: column;
+    min-width: 0; /* Allow truncation */
+}
+
+.file-name {
+    font-weight: 600;
+    color: #333;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.file-size {
+    font-size: 0.75rem;
+    color: #888;
+}
+
+/* Spinner Fix */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+    display: inline-block;
+}
