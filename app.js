@@ -180,33 +180,26 @@ const translations = {
 // Apply language immediately on load
 setLanguage(currentLang);
 
-// Use Eve t DeleEaeiontforeLegauage Switcher (tori robnst r Language Switcher (More robust)
-documenadEventListener('click', (e) => {
-    ///1./Handl. Lannugge Buutge Clicktton Click
-    constcbtno=ne.t rt te.toregc'##lang-btn-btn');
-    if (btnf {(btn) {
-        otstopProp ga ooe.y;ang-menu');
-        coust mmen = dccumela.gleE'eme;ById'ln-mnu';
-        ifr(me;u) mtggl
-    }return;
+// Use Event Delegation for Language Switcher (More robust)
+document.addEventListener('click', (e) => {
+    // 1. Handle Language Button Click
+    const btn = e.target.closest('#lang-btn');
+    if (btn) {
+        e.stopPropagation();
+        const menu = document.getElementById('lang-menu');
+        if (menu) menu.classList.toggle('show');
+        return;
+    }
 
     // 2. Handle Language Option Click
-    // 2. Handce Lonsuage t optioClick('.lang-option');
-    constioption = e)t rg.clost.ang-opton;
+    const option = e.target.closest('.lang-option');
     if (option) {
-  cons  t lang = option.getAttribute('data-lang');
-        anguage(lang);
-        constcmenuo=ndocument.getElementById('t me-menu');
-        if (menu) mu = document.getElementById('lang-menu');
+        const lang = option.getAttribute('data-lang');
+        setLanguage(lang);
+        const menu = document.getElementById('lang-menu');
+        if (menu) menu.classList.remove('show');
         return;
-    i
-
-    // 3. Handle Outside Click (Close Menu)
-    const menu = document.getElementById('lang-menu'f 
-    if (menu && menu.classList.contains('show')) {(menu) menu.classList.remove('show');
-        menu.classList.remove('show'  
-    } return;
- );   }
+    }
 
     // 3. Handle Outside Click (Close Menu)
     const menu = document.getElementById('lang-menu');
