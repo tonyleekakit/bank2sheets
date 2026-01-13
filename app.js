@@ -180,26 +180,33 @@ const translations = {
 // Apply language immediately on load
 setLanguage(currentLang);
 
-if (langBtn && langMenu) {
-    langBtn.addEventListener('click', (e) => {
+// Use Event Delegation for Language Switcher (More robust)
+document.addEventListener('click', (e) => {
+    // 1. Handle Language Button Click
+    const btn = e.target.closest('#lang-btn');
+    if (btn) {
         e.stopPropagation();
-        langMenu.classList.toggle('show');
-    });
+        const menu = document.getElementById('lang-menu');
+        if (menu) menu.classList.toggle('show');
+        return;
+    }
 
-    document.addEventListener('click', (e) => {
-        if (!langMenu.contains(e.target) && !langBtn.contains(e.target)) {
-            langMenu.classList.remove('show');
-        }
-    });
+    // 2. Handle Language Option Click
+    const option = e.target.closest('.lang-option');
+    if (option) {
+        const lang = option.getAttribute('data-lang');
+        setLanguage(lang);
+        const menu = document.getElementById('lang-menu');
+        if (menu) menu.classList.remove('show');
+        return;
+    }
 
-    langOptions.forEach(option => {
-        option.addEventListener('click', () => {
-            const lang = option.getAttribute('data-lang');
-            setLanguage(lang);
-            langMenu.classList.remove('show');
-        });
-    });
-}
+    // 3. Handle Outside Click (Close Menu)
+    const menu = document.getElementById('lang-menu');
+    if (menu && menu.classList.contains('show')) {
+        menu.classList.remove('show');
+    }
+});
 
 function setLanguage(lang) {
     currentLang = lang;
