@@ -59,19 +59,20 @@ const translations = {
         'success_msg': '成功！\n\n檔案 "{filename}" 已準備好轉換。\n(此為示範頁面，實際轉換功能需連接後端)',
         // Upgrade Page
         'upgrade_title': '升級至專業版',
-        'upgrade_subtitle': '解鎖無限次轉換，提升工作效率',
-        'monthly_plan': '月費計劃',
+        'upgrade_subtitle': '解鎖更多轉換次數，提升工作效率',
+        'basic_plan': 'Basic 計劃',
+        'pro_plan': 'Pro 計劃',
+        'subscribe_basic': '訂閱 Basic',
+        'subscribe_pro': '訂閱 Pro',
         'per_month': '/ 月',
-        'unlimited_conversions': '無限次轉換',
-        'priority_support': '優先客戶支援',
-        'secure_encryption': '銀行級加密',
-        'cancel_anytime': '隨時取消',
-        'subscribe_monthly': '訂閱月費',
-        'save_24': '節省 24%',
-        'yearly_plan': '年費計劃',
-        'per_year': '/ 年',
-        'yearly_breakdown': '相當於 $18.99 / 月',
-        'subscribe_yearly': '訂閱年費',
+        'basic_conversions': '500 次轉換 / 月',
+        'pro_conversions': '1000 次轉換 / 月',
+        'best_value': '超值',
+        'pro_subtitle': '適合高用量企業',
+        'remaining_quota': '今日剩餘次數：',
+        'alert_login_first': '請先登入以使用此功能',
+        'alert_quota_exceeded': '您已達到今日免費轉換上限。請升級以繼續使用。',
+        'alert_pdf_only': '請上載支援的檔案格式 (PDF, JPG, PNG, TIFF, GIF, BMP)',
         // Footer
         'privacy_policy': '私隱權政策',
         'terms_of_service': '條款及細則',
@@ -315,28 +316,33 @@ function showToast(message, type = 'info') {
 
     function updateQuotaUI() {
         const display = document.getElementById('usage-display');
-        const countSpan = document.getElementById('quota-count');
         
-        if (!display) return; // Note: countSpan might be null in Pro mode UI replacement
+        if (!display) return;
 
         // Show the display
         display.classList.remove('hidden');
 
+        let limit = USAGE_LIMITS.guest;
+        if (currentUser) {
+            if (currentUser.is_pro) {
+                limit = (currentUser.plan === 'pro') ? USAGE_LIMITS.pro : USAGE_LIMITS.basic;
+            } else {
+                limit = USAGE_LIMITS.user;
+            }
+        }
+
+        const used = getRecentUsage().length;
+        const remaining = Math.max(0, limit - used);
+        
+        // Display for all users (Guest, Free, Basic, Pro)
+        // Using English label as requested previously
+        display.innerHTML = `Remaining Quota: <span id="quota-count" class="font-bold">${remaining}</span> / ${limit}`;
+        
+        // Styling based on plan
         if (currentUser && currentUser.is_pro) {
-            // Pro User Display - English Only
-            const text = '✨ Unlimited Access';
-            display.innerHTML = `<span class="font-bold" style="color: #2e7d32;">${text}</span>`;
-            display.style.backgroundColor = '#e8f5e9'; // Light green background
+            display.style.backgroundColor = '#e8f5e9'; // Light green for paid
             display.style.border = '1px solid #c8e6c9';
         } else {
-            // Normal User/Guest Display - English Only
-            const limit = currentUser ? USAGE_LIMITS.user : USAGE_LIMITS.guest;
-            const used = getRecentUsage().length;
-            const remaining = Math.max(0, limit - used);
-            
-            display.innerHTML = `Remaining Quota: <span id="quota-count" class="font-bold">${remaining}</span>`;
-            
-            // Reset styles
             display.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
             display.style.border = 'none';
         }
@@ -428,20 +434,20 @@ if (googleLoginBtn) {
 }
 
 // --- Stripe Payment Logic ---
-    const subscribeMonthlyBtn = document.getElementById('subscribe-monthly-btn');
-    const subscribeYearlyBtn = document.getElementById('subscribe-yearly-btn');
+    const subscribeBasicBtn = document.getElementById('subscribe-basic-btn');
+    const subscribeProBtn = document.getElementById('subscribe-pro-btn');
     
-    // Test Mode Payment Links
-    const STRIPE_MONTHLY_LINK = 'https://buy.stripe.com/test_eVq7sMdp0aqI77Ta7u28800'; 
-    const STRIPE_YEARLY_LINK = 'https://buy.stripe.com/test_14A14o70C7ewak53J628801'; 
+    // Test Mode Payment Links (Replace with actual Basic/Pro links)
+    const STRIPE_BASIC_LINK = 'https://buy.stripe.com/test_3cIfZiacO6asfEp2F228803'; 
+    const STRIPE_PRO_LINK = 'https://buy.stripe.com/test_fZu9AUfx81Uc2RD3J628802'; 
 
-    if (subscribeMonthlyBtn) {
-        subscribeMonthlyBtn.addEventListener('click', () => handleSubscription(STRIPE_MONTHLY_LINK));
+    if (subscribeBasicBtn) {
+        subscribeBasicBtn.addEventListener('click', () => handleSubscription(STRIPE_BASIC_LINK));
     }
 
-if (subscribeYearlyBtn) {
-    subscribeYearlyBtn.addEventListener('click', () => handleSubscription(STRIPE_YEARLY_LINK));
-}
+    if (subscribeProBtn) {
+        subscribeProBtn.addEventListener('click', () => handleSubscription(STRIPE_PRO_LINK));
+    }
 
 async function handleSubscription(paymentLink) {
     // 1. Check if user is logged in
