@@ -20,7 +20,7 @@ const translations = {
         'upgrade': '升級',
         'login': '登入',
         'logout': '登出',
-        'hero_title': '首個支援中英文銀行月結單的網站',
+        'hero_title': '支援圖片及 200+ 語言銀行月結單',
         'hero_subtitle': '專業、準確、安全。將您的 PDF 或圖片月結單即時轉換為 Excel 格式。',
         'dropzone_title': '點擊或拖放 PDF/圖片檔案至此處',
         'dropzone_subtitle': '支援各大銀行月結單 (PDF, JPG, PNG)',
