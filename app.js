@@ -237,6 +237,9 @@ function setLanguage(lang) {
     }
 
     document.documentElement.lang = lang === 'zh' ? 'zh-HK' : 'en';
+
+    // Update UI elements that depend on currentLang (like the Pro badge)
+    updateQuotaUI();
 }
 
 // --- Toast Notification Logic ---
