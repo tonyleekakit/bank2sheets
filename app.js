@@ -140,19 +140,22 @@ const translations = {
         'success_msg': 'Success!\n\nFile "{filename}" is ready for conversion.\n(This is a demo page, backend connection required for actual conversion)',
         // Upgrade Page
         'upgrade_title': 'Upgrade to Pro',
-        'upgrade_subtitle': 'Unlock unlimited conversions and boost efficiency',
-        'monthly_plan': 'Monthly Plan',
+        'upgrade_subtitle': 'Unlock higher limits and boost efficiency',
+        'basic_plan': 'Basic Plan',
+        'pro_plan': 'Pro Plan',
+        'subscribe_basic': 'Subscribe Basic',
+        'subscribe_pro': 'Subscribe Pro',
         'per_month': '/ mo',
-        'unlimited_conversions': 'Unlimited Conversions',
+        'basic_conversions': '500 Conversions / Month',
+        'pro_conversions': '1000 Conversions / Month',
         'priority_support': 'Priority Support',
         'secure_encryption': 'Bank-Grade Encryption',
-        'cancel_anytime': 'Cancel Anytime',
-        'subscribe_monthly': 'Subscribe Monthly',
-        'save_24': 'Save 24%',
-        'yearly_plan': 'Yearly Plan',
-        'per_year': '/ yr',
-        'yearly_breakdown': 'Equivalent to $18.99 / mo',
-        'subscribe_yearly': 'Subscribe Yearly',
+        'cancel_anytime': 'Batch File Conversion',
+        'best_value': 'Best Value',
+        'pro_subtitle': 'For High Volume',
+        'remaining_quota': 'Daily Remaining:',
+        'alert_login_first': 'Please login to use this feature',
+        'alert_quota_exceeded': 'Daily limit reached. Please upgrade for more.',
         // Footer
         'privacy_policy': 'Privacy Policy',
         'terms_of_service': 'Terms of Service',
@@ -271,7 +274,8 @@ function showToast(message, type = 'info') {
     const USAGE_LIMITS = {
         'guest': 1,
         'user': 5,
-        'pro': Infinity
+        'basic': 500,
+        'pro': 1000
     };
 
     function getRecentUsage() {
