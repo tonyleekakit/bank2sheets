@@ -516,101 +516,142 @@ if (dropZone && fileInput) {
     });
 
     function handleFiles(files) {
-        if (files.length > 0) {
-            const file = files[0];
-            // Define supported MIME types
-            const supportedTypes = [
-                'application/pdf', 
-                'image/jpeg', 
-                'image/png', 
-                'image/tiff', 
-                'image/gif', 
-                'image/bmp'
-            ];
-            
+        if (files.length === 0) return;
+
+        // 1. Permission Check for Batch Upload
+        const isPro = currentUser && currentUser.is_pro;
+        let filesToProcess = Array.from(files);
+
+        if (!isPro && filesToProcess.length > 1) {
+            alert(translations[currentLang]['alert_pro_batch'] || 'Free users can only upload 1 file at a time. Upgrading to Pro for batch upload.');
+            filesToProcess = [filesToProcess[0]]; // Take only the first one
+        }
+
+        // 2. Filter Supported Types
+        const supportedTypes = [
+            'application/pdf', 'image/jpeg', 'image/png', 
+            'image/tiff', 'image/gif', 'image/bmp'
+        ];
+
+        // 3. Process Each File
+        filesToProcess.forEach(file => {
             if (supportedTypes.includes(file.type)) {
-                // Check Usage before Upload
                 if (checkUsage()) {
-                    uploadFile(file);
+                    // Create UI Item first
+                    const fileItem = renderFileItem(file);
+                    // Start Upload
+                    uploadFile(file, fileItem);
                 }
             } else {
-                alert(translations[currentLang]['alert_pdf_only']);
+                alert(`${file.name}: ${translations[currentLang]['alert_pdf_only']}`);
             }
-        }
+        });
     }
 
-    async function uploadFile(file) {
-        // UI Update
-        const titleElement = dropZone.querySelector('h3');
-        const originalTextKey = titleElement.getAttribute('data-i18n');
-        const originalText = titleElement.textContent;
+    function renderFileItem(file) {
+        const container = document.getElementById('file-list');
+        const item = document.createElement('div');
+        item.className = 'file-item uploading';
         
-        titleElement.textContent = `${translations[currentLang]['processing']}: ${file.name}...`;
+        // Determine icon based on type
+        const icon = file.type === 'application/pdf' ? '📄' : '🖼️';
+        const size = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+
+        item.innerHTML = `
+            <div class="file-info">
+                <span class="file-icon">${icon}</span>
+                <div class="file-details">
+                    <span class="file-name">${file.name}</span>
+                    <span class="file-size">${size}</span>
+                </div>
+            </div>
+            <div class="file-actions">
+                <span class="status-text">${translations[currentLang]['processing'] || 'Processing...'}</span>
+                <!-- Loading Spinner (Simple CSS circle) -->
+                <div class="spinner" style="width: 16px; height: 16px; border: 2px solid #ccc; border-top-color: #333; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            </div>
+        `;
+        
+        // Add spin animation style if not exists
+        if (!document.getElementById('spinner-style')) {
+            const style = document.createElement('style');
+            style.id = 'spinner-style';
+            style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+            document.head.appendChild(style);
+        }
+
+        container.appendChild(item);
+        return item;
+    }
+
+    async function uploadFile(file, fileItem) {
+        const statusText = fileItem.querySelector('.status-text');
+        const actionsDiv = fileItem.querySelector('.file-actions');
         
         try {
-            // 1. Generate a unique file name
-            // Format: timestamp_random_filename
+            // 1. Generate unique file name
             const fileExt = file.name.split('.').pop();
             const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
             const filePath = `${fileName}`;
 
-            // 2. Upload to Supabase Storage
+            // 2. Upload to Supabase
             const { data, error } = await supabase.storage
                 .from('uploads')
                 .upload(filePath, file);
 
             if (error) throw error;
 
-            // 3. Trigger backend conversion process
-            console.log('Starting conversion...');
-            titleElement.textContent = translations[currentLang]['processing'] + ' (AI Converting)...';
-
+            // 3. Trigger Backend
             const { data: { user } } = await supabase.auth.getUser();
             const userId = user ? user.id : 'anon';
 
-            // Call Google Cloud Run Backend
             const response = await fetch('https://bank2sheets-converter-202541778800.asia-east1.run.app/convert', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    file_path: filePath,
-                    user_id: userId
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ file_path: filePath, user_id: userId })
             });
 
             const result = await response.json();
 
-            if (!response.ok) {
-                throw new Error(result.error || 'Conversion failed on server');
-            }
+            if (!response.ok) throw new Error(result.error || 'Server Error');
 
-            // 4. Success & Download
-            console.log('Conversion success:', result);
-
-            // Update Usage
-            incrementUsage();
+            // 4. Success UI Update
+            fileItem.classList.remove('uploading');
+            fileItem.classList.add('complete');
             
-            // Create a download link
-            const downloadLink = document.createElement('a');
-            downloadLink.href = result.download_url;
-            downloadLink.download = file.name.replace('.pdf', '.xlsx');
-            document.body.appendChild(downloadLink);
-            downloadLink.click();
-            document.body.removeChild(downloadLink);
+            // Replace actions with Download Button
+            actionsDiv.innerHTML = `
+                <span class="status-text" style="color: #2e7d32;">Success</span>
+                <button class="btn-action btn-download">Download</button>
+            `;
+            
+            const downloadBtn = actionsDiv.querySelector('.btn-download');
+            downloadBtn.onclick = () => {
+                const link = document.createElement('a');
+                link.href = result.download_url;
+                link.download = file.name.replace(/\.[^/.]+$/, "") + ".xlsx";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
 
-            let msg = translations[currentLang]['success_msg'].replace('{filename}', file.name);
-            alert(msg + '\n\nExcel file is downloading...');
+            incrementUsage();
 
         } catch (error) {
-            console.error('Upload/Conversion error:', error);
-            alert('Error: ' + error.message);
-        } finally {
-            // Restore original text
-            titleElement.textContent = originalText;
-            // Reset file input
-            fileInput.value = '';
+            console.error('Error:', error);
+            fileItem.classList.remove('uploading');
+            fileItem.classList.add('error');
+            
+            actionsDiv.innerHTML = `
+                <span class="status-text" style="color: #c62828;">Error</span>
+                <button class="btn-action btn-remove" title="Remove">&times;</button>
+            `;
+            
+            const removeBtn = actionsDiv.querySelector('.btn-remove');
+            removeBtn.onclick = () => fileItem.remove();
+            
+            // Optional: Show specific error in tooltip
+            fileItem.title = error.message;
         }
     }
 }
