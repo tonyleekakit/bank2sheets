@@ -289,9 +289,8 @@ function showToast(message, type = 'info') {
     }
 
     function checkUsage() {
-        // 1. Check if user is pro (simplified for now)
-        const isPro = false; 
-        if (isPro) return true;
+        // 1. Check if user is pro
+        if (currentUser && currentUser.is_pro) return true;
 
         const limit = currentUser ? USAGE_LIMITS.user : USAGE_LIMITS.guest;
         const recentUsage = getRecentUsage();
@@ -334,16 +333,28 @@ function showToast(message, type = 'info') {
 checkUser();
 
 async function checkUser() {
-    const { data: { user } } = await supabase.auth.getUser();
-    updateUI(user);
-}
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            // Fetch Profile Data (is_pro status)
+            const { data: profile, error } = await supabase
+                .from('profiles')
+                .select('is_pro')
+                .eq('id', user.id)
+                .single();
+            
+            if (profile) {
+                user.is_pro = profile.is_pro;
+            }
+        }
+        updateUI(user);
+    }
 
-function updateUI(user) {
-    currentUser = user; // Update global user
-    const loginBtns = document.querySelectorAll('[data-i18n="login"]');
-    
-    // Update Quota UI
-    updateQuotaUI();
+    function updateUI(user) {
+        currentUser = user; // Update global user
+        const loginBtns = document.querySelectorAll('[data-i18n="login"]');
+        
+        // Update Quota UI
+        updateQuotaUI();
 
     if (user) {
         // User is logged in
@@ -435,13 +446,13 @@ async function handleSubscription(paymentLink) {
     }
 
     // 3. Determine locale
-    // Stripe uses 'zh-HK' for Traditional Chinese, 'en' for English
-    const stripeLocale = currentLang === 'zh' ? 'zh-HK' : 'en';
+        // Stripe uses 'zh-HK' for Traditional Chinese, 'en' for English
+        const stripeLocale = currentLang === 'zh' ? 'zh-HK' : 'en';
 
-    // 2. Redirect to Stripe with user email pre-filled AND locale
-    const paymentUrl = `${paymentLink}?prefilled_email=${encodeURIComponent(user.email)}&locale=${stripeLocale}`;
-    window.location.href = paymentUrl;
-}
+        // 2. Redirect to Stripe with user email pre-filled AND locale AND client_reference_id
+        const paymentUrl = `${paymentLink}?prefilled_email=${encodeURIComponent(user.email)}&locale=${stripeLocale}&client_reference_id=${user.id}`;
+        window.location.href = paymentUrl;
+    }
 
 // Existing File Upload Logic (Only if on homepage)
 const dropZone = document.getElementById('drop-zone');
