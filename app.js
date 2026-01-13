@@ -317,7 +317,7 @@ function showToast(message, type = 'info') {
         const display = document.getElementById('usage-display');
         const countSpan = document.getElementById('quota-count');
         
-        if (!display) return;
+        if (!display) return; // Note: countSpan might be null in Pro mode UI replacement
 
         // Show the display
         display.classList.remove('hidden');
@@ -448,13 +448,13 @@ async function handleSubscription(paymentLink) {
     }
 
     // 3. Determine locale
-        // Stripe uses 'zh-HK' for Traditional Chinese, 'en' for English
-        const stripeLocale = currentLang === 'zh' ? 'zh-HK' : 'en';
+    // Stripe uses 'zh-HK' for Traditional Chinese, 'en' for English
+    const stripeLocale = currentLang === 'zh' ? 'zh-HK' : 'en';
 
-        // 2. Redirect to Stripe with user email pre-filled AND locale AND client_reference_id
-        const paymentUrl = `${paymentLink}?prefilled_email=${encodeURIComponent(user.email)}&locale=${stripeLocale}&client_reference_id=${user.id}`;
-        window.location.href = paymentUrl;
-    }
+    // 2. Redirect to Stripe with user email pre-filled AND locale AND client_reference_id
+    const paymentUrl = `${paymentLink}?prefilled_email=${encodeURIComponent(user.email)}&locale=${stripeLocale}&client_reference_id=${user.id}`;
+    window.location.href = paymentUrl;
+}
 
 // Existing File Upload Logic (Only if on homepage)
 const dropZone = document.getElementById('drop-zone');
