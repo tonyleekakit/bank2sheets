@@ -323,7 +323,10 @@ function showToast(message, type = 'info') {
     function incrementUsage() {
         const usage = getRecentUsage();
         usage.push(Date.now());
-        localStorage.setItem('
+        localStorage.setItem('conversionUsage', JSON.stringify(usage));
+        updateQuotaUI();
+    }
+
     function updateQuotaUI() {
         // Re-read currentLang to ensure it's up to date
         currentLang = localStorage.getItem('preferredLang') || 'zh';
