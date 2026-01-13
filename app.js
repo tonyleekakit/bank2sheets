@@ -180,26 +180,33 @@ const translations = {
 // Apply language immediately on load
 setLanguage(currentLang);
 
-// Use Event Delegation for Language Switcher (More robust)
-document.addEventListener('click', (e) => {
-    // 1. Handle Language Button Click
-    const btn = e.target.closest('#lang-btn');
-    if (btn) {
-        e.stopPropagation();
-        const menu = document.getElementById('lang-menu');
-        if (menu) menu.classList.toggle('show');
-        return;
-    }
+// Use Eve t DeleEaeiontforeLegauage Switcher (tori robnst r Language Switcher (More robust)
+documenadEventListener('click', (e) => {
+    ///1./Handl. Lannugge Buutge Clicktton Click
+    constcbtno=ne.t rt te.toregc'##lang-btn-btn');
+    if (btnf {(btn) {
+        otstopProp ga ooe.y;ang-menu');
+        coust mmen = dccumela.gleE'eme;ById'ln-mnu';
+        ifr(me;u) mtggl
+    }return;
 
     // 2. Handle Language Option Click
-    const option = e.target.closest('.lang-option');
+    // 2. Handce Lonsuage t optioClick('.lang-option');
+    constioption = e)t rg.clost.ang-opton;
     if (option) {
-        const lang = option.getAttribute('data-lang');
-        setLanguage(lang);
-        const menu = document.getElementById('lang-menu');
-        if (menu) menu.classList.remove('show');
+  cons  t lang = option.getAttribute('data-lang');
+        anguage(lang);
+        constcmenuo=ndocument.getElementById('t me-menu');
+        if (menu) mu = document.getElementById('lang-menu');
         return;
-    }
+    i
+
+    // 3. Handle Outside Click (Close Menu)
+    const menu = document.getElementById('lang-menu'f 
+    if (menu && menu.classList.contains('show')) {(menu) menu.classList.remove('show');
+        menu.classList.remove('show'  
+    } return;
+ );   }
 
     // 3. Handle Outside Click (Close Menu)
     const menu = document.getElementById('lang-menu');
@@ -237,9 +244,6 @@ function setLanguage(lang) {
     }
 
     document.documentElement.lang = lang === 'zh' ? 'zh-HK' : 'en';
-
-    // Force update Quota UI to reflect language change (especially for Pro status text)
-    updateQuotaUI();
 }
 
 // --- Toast Notification Logic ---
@@ -319,38 +323,35 @@ function showToast(message, type = 'info') {
     function incrementUsage() {
         const usage = getRecentUsage();
         usage.push(Date.now());
-        localStorage.setItem('conversionUsage', JSON.stringify(usage));
-        updateQuotaUI();
-    }
-
+        localStorage.setItem('
     function updateQuotaUI() {
-    // Re-read currentLang to ensure it's up to date
-    currentLang = localStorage.getItem('preferredLang') || 'zh';
-    
+        // Re-read currentLang to ensure it's up to date
+        currentLang = localStorage.getItem('preferredLang') || 'zh';
+        
     const display = document.getElementById('usage-display');
-    const countSpan = document.getElementById('quota-count');
-    
+        const countSpan = document.getElementById('quota-count');
+        
     if (!display) return; // Note: countSpan might be null in Pro mode UI replacement
-
-    // Show the display
-    display.classList.remove('hidden');
-
-    if (currentUser && currentUser.is_pro) {
-        // Pro User Display
-        const text = currentLang === 'zh' ? '✨ 已升級無限轉換' : '✨ Unlimited Access';
-        display.innerHTML = `<span class="font-bold" style="color: #2e7d32;">${text}</span>`;
-        display.style.backgroundColor = '#e8f5e9'; // Light green background
-        display.style.border = '1px solid #c8e6c9';
-    } else {
-        // Normal User/Guest Display
-        const limit = currentUser ? USAGE_LIMITS.user : USAGE_LIMITS.guest;
-        const used = getRecentUsage().length;
-        const remaining = Math.max(0, limit - used);
-        
-        const label = translations[currentLang]['remaining_quota'];
-        display.innerHTML = `<span data-i18n="remaining_quota">${label}</span> <span id="quota-count" class="font-bold">${remaining}</span>`;
-        
-        // Reset styles
+    
+        // Show the display
+        display.classList.remove('hidden');
+    
+        if (currentUser && currentUser.is_pro) {
+            // Pro User Display
+            const text = currentLang === 'zh' ? '✨ 已升級無限轉換' : '✨ Unlimited Access';
+            display.innerHTML = `<span class="font-bold" style="color: #2e7d32;">${text}</span>`;
+            display.style.backgroundColor = '#e8f5e9'; // Light green background
+            display.style.border = '1px solid #c8e6c9';
+        } else {
+            // Normal User/Guest Display
+            const limit = currentUser ? USAGE_LIMITS.user : USAGE_LIMITS.guest;
+            const used = getRecentUsage().length;
+            const remaining = Math.max(0, limit - used);
+            
+            const label = translations[currentLang]['remaining_quota'];
+            display.innerHTML = `<span data-i18n="remaining_quota">${label}</span> <span id="quota-count" class="font-bold">${remaining}</span>`;
+            
+            // Reset styles
         display.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
         display.style.border = 'none';
     }
