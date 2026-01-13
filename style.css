@@ -27,11 +27,17 @@ header {
     align-items: center;
     padding: 1.5rem 5%;
     border-bottom: 1px solid var(--gray-medium);
-    position: sticky;
+    position: fixed; /* Changed from sticky to fixed */
     top: 0;
+    left: 0;
+    width: 100%;
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
     z-index: 1000;
+}
+
+main {
+    padding-top: 90px; /* Add padding to account for fixed header */
 }
 
 .logo {
