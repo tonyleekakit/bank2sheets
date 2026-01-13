@@ -289,8 +289,9 @@ function showToast(message, type = 'info') {
     }
 
     function checkUsage() {
-        // 1. Check if user is pro
-        if (currentUser && currentUser.is_pro) return true;
+        // 1. Check if user is pro (simplified for now)
+        const isPro = false; 
+        if (isPro) return true;
 
         const limit = currentUser ? USAGE_LIMITS.user : USAGE_LIMITS.guest;
         const recentUsage = getRecentUsage();
@@ -316,17 +317,30 @@ function showToast(message, type = 'info') {
         const display = document.getElementById('usage-display');
         const countSpan = document.getElementById('quota-count');
         
-        if (!display || !countSpan) return;
+        if (!display) return;
 
         // Show the display
         display.classList.remove('hidden');
 
-        const limit = currentUser ? USAGE_LIMITS.user : USAGE_LIMITS.guest;
-        const used = getRecentUsage().length;
-        const remaining = Math.max(0, limit - used);
-
-        // Update text
-        countSpan.textContent = remaining;
+        if (currentUser && currentUser.is_pro) {
+            // Pro User Display
+            const text = currentLang === 'zh' ? '✨ 已升級無限轉換' : '✨ Unlimited Access';
+            display.innerHTML = `<span class="font-bold" style="color: #2e7d32;">${text}</span>`;
+            display.style.backgroundColor = '#e8f5e9'; // Light green background
+            display.style.border = '1px solid #c8e6c9';
+        } else {
+            // Normal User/Guest Display
+            const limit = currentUser ? USAGE_LIMITS.user : USAGE_LIMITS.guest;
+            const used = getRecentUsage().length;
+            const remaining = Math.max(0, limit - used);
+            
+            const label = translations[currentLang]['remaining_quota'];
+            display.innerHTML = `<span data-i18n="remaining_quota">${label}</span> <span id="quota-count" class="font-bold">${remaining}</span>`;
+            
+            // Reset styles
+            display.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
+            display.style.border = 'none';
+        }
     }
 
 // --- Auth State Management ---
@@ -334,18 +348,6 @@ checkUser();
 
 async function checkUser() {
         const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-            // Fetch Profile Data (is_pro status)
-            const { data: profile, error } = await supabase
-                .from('profiles')
-                .select('is_pro')
-                .eq('id', user.id)
-                .single();
-            
-            if (profile) {
-                user.is_pro = profile.is_pro;
-            }
-        }
         updateUI(user);
     }
 
