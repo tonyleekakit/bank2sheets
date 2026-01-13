@@ -267,68 +267,68 @@ function showToast(message, type = 'info') {
 }
 
 // --- Usage Limit Logic ---
-const USAGE_LIMITS = {
-    'guest': 1,
-    'user': 5,
-    'pro': Infinity
-};
+    const USAGE_LIMITS = {
+        'guest': 1,
+        'user': 5,
+        'pro': Infinity
+    };
 
-function getRecentUsage() {
-    try {
-        const usage = JSON.parse(localStorage.getItem('conversionUsage') || '[]');
-        if (!Array.isArray(usage)) return [];
+    function getRecentUsage() {
+        try {
+            const usage = JSON.parse(localStorage.getItem('conversionUsage') || '[]');
+            if (!Array.isArray(usage)) return [];
+            
+            // Filter for last 24 hours
+            const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+            return usage.filter(timestamp => timestamp > oneDayAgo);
+        } catch (e) {
+            console.error('Error parsing usage:', e);
+            localStorage.setItem('conversionUsage', '[]');
+            return [];
+        }
+    }
+
+    function checkUsage() {
+        // 1. Check if user is pro (simplified for now)
+        const isPro = false; 
+        if (isPro) return true;
+
+        const limit = currentUser ? USAGE_LIMITS.user : USAGE_LIMITS.guest;
+        const recentUsage = getRecentUsage();
+
+        if (recentUsage.length >= limit) {
+            const msg = currentUser 
+                ? (currentLang === 'zh' ? `您已達到每日 ${limit} 次轉換上限。` : `You have reached your daily limit of ${limit} conversions.`)
+                : (currentLang === 'zh' ? `訪客每日限制 ${limit} 次。請登入以獲取更多額度。` : `Guest limit reached (${limit}/day). Please login for more.`);
+            alert(msg);
+            return false;
+        }
+        return true;
+    }
+
+    function incrementUsage() {
+        const usage = getRecentUsage();
+        usage.push(Date.now());
+        localStorage.setItem('conversionUsage', JSON.stringify(usage));
+        updateQuotaUI();
+    }
+
+    function updateQuotaUI() {
+        const display = document.getElementById('usage-display');
+        const countSpan = document.getElementById('quota-count');
         
-        // Filter for last 24 hours
-        const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
-        return usage.filter(timestamp => timestamp > oneDayAgo);
-    } catch (e) {
-        console.error('Error parsing usage:', e);
-        localStorage.setItem('conversionUsage', '[]');
-        return [];
+        if (!display || !countSpan) return;
+
+        // Show the display
+        display.classList.remove('hidden');
+
+        const limit = currentUser ? USAGE_LIMITS.user : USAGE_LIMITS.guest;
+        const used = getRecentUsage().length;
+        const remaining = Math.max(0, limit - used);
+
+        // Update text
+        countSpan.textContent = remaining;
     }
-}
-
-function checkUsage() {
-    // 1. Check if user is pro (simplified for now)
-    const isPro = false; 
-    if (isPro) return true;
-
-    const limit = currentUser ? USAGE_LIMITS.user : USAGE_LIMITS.guest;
-    const recentUsage = getRecentUsage();
-
-    if (recentUsage.length >= limit) {
-        const msg = currentUser 
-            ? (currentLang === 'zh' ? `您已達到每日 ${limit} 次轉換上限。` : `You have reached your daily limit of ${limit} conversions.`)
-            : (currentLang === 'zh' ? `訪客每日限制 ${limit} 次。請登入以獲取更多額度。` : `Guest limit reached (${limit}/day). Please login for more.`);
-        alert(msg);
-        return false;
-    }
-    return true;
-}
-
-function incrementUsage() {
-    const usage = getRecentUsage();
-    usage.push(Date.now());
-    localStorage.setItem('conversionUsage', JSON.stringify(usage));
-    updateQuotaUI();
-}
-
-function updateQuotaUI() {
-    const display = document.getElementById('usage-display');
-    const countSpan = document.getElementById('quota-count');
-    
-    if (!display || !countSpan) return;
-
-    // Show the display
-    display.classList.remove('hidden');
-
-    const limit = currentUser ? USAGE_LIMITS.user : USAGE_LIMITS.guest;
-    const used = getRecentUsage().length;
-    const remaining = Math.max(0, limit - used);
-
-    // Update text
-    countSpan.textContent = remaining;
-}
 
 // --- Auth State Management ---
 checkUser();
@@ -403,16 +403,16 @@ if (googleLoginBtn) {
 }
 
 // --- Stripe Payment Logic ---
-const subscribeMonthlyBtn = document.getElementById('subscribe-monthly-btn');
-const subscribeYearlyBtn = document.getElementById('subscribe-yearly-btn');
+    const subscribeMonthlyBtn = document.getElementById('subscribe-monthly-btn');
+    const subscribeYearlyBtn = document.getElementById('subscribe-yearly-btn');
+    
+    // Test Mode Payment Links
+    const STRIPE_MONTHLY_LINK = 'https://buy.stripe.com/test_eVq7sMdp0aqI77Ta7u28800'; 
+    const STRIPE_YEARLY_LINK = 'https://buy.stripe.com/test_14A14o70C7ewak53J628801'; 
 
-// 請將您的 Stripe Payment Link 填入此處
-const STRIPE_MONTHLY_LINK = 'https://buy.stripe.com/eVq7sMdp0aqI77Ta7u28800'; 
-const STRIPE_YEARLY_LINK = 'https://buy.stripe.com/14A14o70C7ewak53J628801'; // 請填入年費連結
-
-if (subscribeMonthlyBtn) {
-    subscribeMonthlyBtn.addEventListener('click', () => handleSubscription(STRIPE_MONTHLY_LINK));
-}
+    if (subscribeMonthlyBtn) {
+        subscribeMonthlyBtn.addEventListener('click', () => handleSubscription(STRIPE_MONTHLY_LINK));
+    }
 
 if (subscribeYearlyBtn) {
     subscribeYearlyBtn.addEventListener('click', () => handleSubscription(STRIPE_YEARLY_LINK));
