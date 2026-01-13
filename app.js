@@ -347,29 +347,22 @@ function showToast(message, type = 'info') {
 checkUser();
 
 async function checkUser() {
-    console.log('[DEBUG] checkUser started');
-    const { data: { user } } = await supabase.auth.getUser();
-    console.log('[DEBUG] Auth User:', user);
-    
-    if (user) {
-        // Fetch Profile Data (is_pro status)
-        console.log('[DEBUG] Fetching profile for:', user.id);
-        const { data: profile, error } = await supabase
-            .from('profiles')
-            .select('is_pro')
-            .eq('id', user.id)
-            .single();
+        const { data: { user } } = await supabase.auth.getUser();
         
-        console.log('[DEBUG] Profile result:', profile);
-        console.log('[DEBUG] Profile error:', error);
-        
-        if (profile) {
-            user.is_pro = profile.is_pro;
-            console.log('[DEBUG] Set user.is_pro to:', user.is_pro);
+        if (user) {
+            // Fetch Profile Data (is_pro status)
+            const { data: profile, error } = await supabase
+                .from('profiles')
+                .select('is_pro')
+                .eq('id', user.id)
+                .single();
+            
+            if (profile) {
+                user.is_pro = profile.is_pro;
+            }
         }
+        updateUI(user);
     }
-    updateUI(user);
-}
 
     function updateUI(user) {
         currentUser = user; // Update global user
