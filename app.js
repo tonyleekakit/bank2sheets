@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Initialize language from localStorage or default to 'zh'
     let currentLang = localStorage.getItem('preferredLang') || 'zh';
+    let currentUser = null; // Global user state
 
     const translations = {
         'zh': {
