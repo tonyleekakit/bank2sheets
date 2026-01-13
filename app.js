@@ -1,252 +1,5 @@
 import { supabase } from './supabaseClient.js';
 
-// ==================== Toast Notification System ====================
-function showToast(message, type = 'info', title = '') {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
-
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-
-    const icons = {
-        success: '✓',
-        error: '✕',
-        warning: '⚠',
-        info: 'ℹ'
-    };
-
-    toast.innerHTML = `
-        <div class="toast-icon">${icons[type] || icons.info}</div>
-        <div class="toast-content">
-            ${title ? `<div class="toast-title">${title}</div>` : ''}
-            <div class="toast-message">${message}</div>
-        </div>
-        <button class="toast-close" onclick="this.parentElement.remove()">×</button>
-    `;
-
-    container.appendChild(toast);
-
-    // Auto remove after 5 seconds
-    setTimeout(() => {
-        toast.classList.add('hiding');
-        setTimeout(() => toast.remove(), 300);
-    }, 5000);
-}
-
-// ==================== Progress Bar Functions ====================
-function showProgress() {
-    const container = document.getElementById('progress-container');
-    if (container) container.style.display = 'block';
-}
-
-function hideProgress() {
-    const container = document.getElementById('progress-container');
-    if (container) container.style.display = 'none';
-}
-
-function updateProgress(percent, text = '') {
-    const fill = document.getElementById('progress-fill');
-    const textEl = document.getElementById('progress-text');
-    if (fill) fill.style.width = `${percent}%`;
-    if (textEl) {
-        textEl.textContent = text || `${percent}%`;
-    }
-}
-
-// ==================== File Size Validation ====================
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-
-function validateFileSize(file) {
-    if (file.size > MAX_FILE_SIZE) {
-        return {
-            valid: false,
-            error: `檔案大小超過限制 (最大 10MB)`
-        };
-    }
-    return { valid: true };
-}
-
-// ==================== PDF Preview Functions ====================
-async function previewPDF(file) {
-    const container = document.getElementById('file-preview-container');
-    const canvas = document.getElementById('pdf-preview');
-    const filenameEl = document.getElementById('preview-filename');
-    
-    if (!container || !canvas || !filenameEl) return;
-
-    try {
-        // Wait for PDF.js to load
-        if (typeof pdfjsLib === 'undefined') {
-            await new Promise((resolve, reject) => {
-                const checkInterval = setInterval(() => {
-                    if (typeof pdfjsLib !== 'undefined') {
-                        clearInterval(checkInterval);
-                        resolve();
-                    }
-                }, 100);
-                setTimeout(() => {
-                    clearInterval(checkInterval);
-                    reject(new Error('PDF.js failed to load'));
-                }, 5000);
-            });
-        }
-        
-        // Set PDF.js worker
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        const page = await pdf.getPage(1);
-
-        const viewport = page.getViewport({ scale: 1.5 });
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-
-        const context = canvas.getContext('2d');
-        await page.render({
-            canvasContext: context,
-            viewport: viewport
-        }).promise;
-
-        filenameEl.textContent = file.name;
-        container.style.display = 'block';
-    } catch (error) {
-        console.error('PDF preview error:', error);
-        // Don't show error toast if PDF.js is not loaded yet, just skip preview
-        if (error.message !== 'PDF.js failed to load') {
-            showToast('無法預覽 PDF 檔案', 'error');
-        }
-    }
-}
-
-function removeFilePreview() {
-    const container = document.getElementById('file-preview-container');
-    const fileInput = document.getElementById('file-input');
-    if (container) container.style.display = 'none';
-    if (fileInput) fileInput.value = '';
-}
-
-// ==================== Quota Management ====================
-async function updateQuotaDisplay() {
-    const quotaDisplay = document.getElementById('quota-display');
-    const quotaCount = document.getElementById('quota-count');
-    
-    if (!quotaDisplay || !quotaCount) return;
-
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (user) {
-        // TODO: Fetch actual quota from backend
-        // For now, show placeholder
-        quotaDisplay.style.display = 'flex';
-        quotaCount.textContent = '5'; // Placeholder
-    } else {
-        quotaDisplay.style.display = 'none';
-    }
-}
-
-// ==================== Conversion History ====================
-async function loadConversionHistory() {
-    const historySection = document.getElementById('history-section');
-    const historyList = document.getElementById('history-list');
-    
-    if (!historySection || !historyList) return;
-
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-        historySection.style.display = 'none';
-        return;
-    }
-
-    historySection.style.display = 'block';
-    
-    // TODO: Fetch actual history from backend
-    // For now, show empty state
-    historyList.innerHTML = `
-        <div class="history-empty">
-            <div class="history-empty-icon">📄</div>
-            <p data-i18n="history_empty">暫無轉換記錄</p>
-        </div>
-    `;
-    
-    // Apply translations
-    const emptyText = document.querySelector('[data-i18n="history_empty"]');
-    if (emptyText && translations[currentLang]) {
-        emptyText.textContent = translations[currentLang]['history_empty'] || '暫無轉換記錄';
-    }
-}
-
-// ==================== Excel Preview ====================
-async function previewExcel(url) {
-    // Create modal
-    const modal = document.createElement('div');
-    modal.className = 'preview-modal';
-    modal.id = 'excel-preview-modal';
-    
-    modal.innerHTML = `
-        <div class="preview-modal-content">
-            <div class="preview-modal-header">
-                <div class="preview-modal-title" data-i18n="preview_title">預覽 Excel 檔案</div>
-                <button class="preview-modal-close" onclick="document.getElementById('excel-preview-modal').remove()">×</button>
-            </div>
-            <div class="preview-modal-body">
-                <div class="preview-table-container">
-                    <p data-i18n="preview_loading">正在載入預覽...</p>
-                </div>
-            </div>
-            <div class="preview-modal-footer">
-                <button class="btn btn-outline" onclick="document.getElementById('excel-preview-modal').remove()" data-i18n="close">關閉</button>
-                <a href="${url}" download class="btn btn-black" data-i18n="download">下載</a>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(modal);
-    modal.classList.add('show');
-    
-    // Load Excel file using SheetJS (xlsx library)
-    try {
-        const response = await fetch(url);
-        const arrayBuffer = await response.arrayBuffer();
-        
-        // Dynamically load xlsx library
-        if (typeof XLSX === 'undefined') {
-            const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-            document.head.appendChild(script);
-            await new Promise(resolve => {
-                script.onload = resolve;
-            });
-        }
-        
-        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const html = XLSX.utils.sheet_to_html(firstSheet);
-        
-        const container = modal.querySelector('.preview-table-container');
-        container.innerHTML = html;
-        
-        // Apply translations
-        applyTranslationsToElement(modal);
-    } catch (error) {
-        console.error('Excel preview error:', error);
-        const container = modal.querySelector('.preview-table-container');
-        container.innerHTML = '<p data-i18n="preview_error">無法載入預覽</p>';
-        applyTranslationsToElement(modal);
-    }
-}
-
-function applyTranslationsToElement(element) {
-    if (!translations[currentLang]) return;
-    element.querySelectorAll('[data-i18n]').forEach(el => {
-        const key = el.getAttribute('data-i18n');
-        if (translations[currentLang][key]) {
-            el.textContent = translations[currentLang][key];
-        }
-    });
-}
-
 document.addEventListener('DOMContentLoaded', () => {
     // Language Switcher Logic
     const langBtn = document.getElementById('lang-btn');
@@ -299,6 +52,10 @@ document.addEventListener('DOMContentLoaded', () => {
             'plan3_btn': '立即升級',
             'alert_pdf_only': '請上載 PDF 檔案格式',
             'processing': '正在處理',
+            'preview_title': '預覽第一頁',
+            'remaining_quota': '今日剩餘次數:',
+            'history_title': '轉換記錄',
+            'no_history': '暫無記錄',
             'success_msg': '成功！\n\n檔案 "{filename}" 已準備好轉換。\n(此為示範頁面，實際轉換功能需連接後端)',
             // Upgrade Page
             'upgrade_title': '升級至專業版',
@@ -336,24 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'auth_success_register': '註冊成功！請檢查您的郵箱以驗證帳戶。',
             'auth_error_generic': '發生錯誤，請稍後再試。',
             'continue_with_google': '使用 Google 帳號繼續',
-            'or_email': '或使用電子郵件',
-            // New features
-            'remaining_quota': '剩餘轉換次數',
-            'file_limit_hint': '最大檔案大小: 10MB',
-            'file_too_large': '檔案大小超過 10MB，請選擇較小的檔案',
-            'uploading': '上傳中',
-            'converting': '轉換中',
-            'conversion_complete': '轉換完成',
-            'download_starting': '開始下載',
-            'history_title': '轉換歷史',
-            'history_empty': '暫無轉換記錄',
-            'preview_title': '預覽 Excel 檔案',
-            'preview_loading': '正在載入預覽...',
-            'preview_error': '無法載入預覽',
-            'close': '關閉',
-            'download': '下載',
-            'preview': '預覽',
-            'remove_file': '移除檔案'
+            'or_email': '或使用電子郵件'
         },
         'en': {
             'doc_title_home': 'BANK2SHEETS - Convert Bank Statements to Excel',
@@ -433,24 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'auth_success_register': 'Registration Successful! Please check your email to verify your account.',
             'auth_error_generic': 'An error occurred, please try again later.',
             'continue_with_google': 'Continue with Google',
-            'or_email': 'Or continue with email',
-            // New features
-            'remaining_quota': 'Remaining Conversions',
-            'file_limit_hint': 'Max file size: 10MB',
-            'file_too_large': 'File size exceeds 10MB, please select a smaller file',
-            'uploading': 'Uploading',
-            'converting': 'Converting',
-            'conversion_complete': 'Conversion Complete',
-            'download_starting': 'Download Starting',
-            'history_title': 'Conversion History',
-            'history_empty': 'No conversion history',
-            'preview_title': 'Preview Excel File',
-            'preview_loading': 'Loading preview...',
-            'preview_error': 'Failed to load preview',
-            'close': 'Close',
-            'download': 'Download',
-            'preview': 'Preview',
-            'remove_file': 'Remove File'
+            'or_email': 'Or continue with email'
         }
     };
 
@@ -509,19 +232,49 @@ document.addEventListener('DOMContentLoaded', () => {
         document.documentElement.lang = lang === 'zh' ? 'zh-HK' : 'en';
     }
 
+    // --- Toast Notification Logic ---
+    function showToast(message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        
+        // Allow HTML in message if needed, or textContent for safety. 
+        // Using innerHTML to support line breaks <br> if passed
+        toast.innerHTML = message.replace(/\n/g, '<br>');
+
+        const closeBtn = document.createElement('button');
+        closeBtn.innerHTML = '&times;';
+        closeBtn.style.background = 'none';
+        closeBtn.style.border = 'none';
+        closeBtn.style.fontSize = '1.2rem';
+        closeBtn.style.cursor = 'pointer';
+        closeBtn.style.marginLeft = '1rem';
+        closeBtn.onclick = () => toast.remove();
+        
+        toast.appendChild(closeBtn);
+        container.appendChild(toast);
+
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s';
+                setTimeout(() => toast.remove(), 300);
+            }
+        }, 5000);
+    }
+
     // --- Auth State Management ---
     checkUser();
-    
-    // Initialize quota and history on page load
-    updateQuotaDisplay();
-    loadConversionHistory();
 
     async function checkUser() {
         const { data: { user } } = await supabase.auth.getUser();
-        await updateUI(user);
+        updateUI(user);
     }
 
-    async function updateUI(user) {
+    function updateUI(user) {
         const loginBtns = document.querySelectorAll('[data-i18n="login"]');
         
         if (user) {
@@ -535,9 +288,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.parentNode.replaceChild(newBtn, btn);
                 newBtn.onclick = handleLogout;
             });
-            // Update quota and history for logged in users
-            await updateQuotaDisplay();
-            await loadConversionHistory();
         } else {
             // User is logged out
             loginBtns.forEach(btn => {
@@ -549,11 +299,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.parentNode.replaceChild(newBtn, btn);
                 newBtn.onclick = () => window.location.href = 'auth.html';
             });
-            // Hide quota and history for logged out users
-            const quotaDisplay = document.getElementById('quota-display');
-            const historySection = document.getElementById('history-section');
-            if (quotaDisplay) quotaDisplay.style.display = 'none';
-            if (historySection) historySection.style.display = 'none';
         }
     }
 
@@ -584,7 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (error) throw error;
             } catch (error) {
                 console.error('Google login error:', error);
-                showToast(error.message, 'error', '登入失敗');
+                alert(error.message);
             }
         });
     }
@@ -611,15 +356,13 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (!user) {
             // If not logged in, redirect to auth page
-            showToast(translations[currentLang]['login_required'] || 'Please login first', 'warning');
-            setTimeout(() => {
-                window.location.href = 'auth.html';
-            }, 2000);
+            alert(translations[currentLang]['login_required'] || 'Please login first');
+            window.location.href = 'auth.html';
             return;
         }
 
         if (!paymentLink || paymentLink.includes('YOUR_')) {
-            showToast('Payment link not configured yet.', 'error');
+            alert('Payment link not configured yet.');
             return;
         }
 
@@ -682,42 +425,195 @@ document.addEventListener('DOMContentLoaded', () => {
         function handleFiles(files) {
             if (files.length > 0) {
                 const file = files[0];
-                if (file.type !== 'application/pdf') {
+                if (file.type === 'application/pdf') {
+                    // Preview First
+                    previewPDF(file);
+                    // Check Usage before Upload
+                    if (checkUsage()) {
+                        uploadFile(file);
+                    }
+                } else {
                     showToast(translations[currentLang]['alert_pdf_only'], 'error');
-                    return;
                 }
-                
-                // Validate file size
-                const validation = validateFileSize(file);
-                if (!validation.valid) {
-                    showToast(translations[currentLang]['file_too_large'], 'error');
-                    return;
-                }
-                
-                // Clear previous buttons and progress
-                const existingButtons = dropZone.querySelector('.button-container');
-                if (existingButtons) existingButtons.remove();
-                hideProgress();
-                
-                // Preview PDF
-                previewPDF(file);
-                uploadFile(file);
             }
         }
-        
-        // Remove file preview button
-        const removeFileBtn = document.getElementById('remove-file-btn');
-        if (removeFileBtn) {
-            removeFileBtn.addEventListener('click', () => {
-                removeFilePreview();
-                hideProgress();
+
+        async function previewPDF(file) {
+            const previewContainer = document.getElementById('preview-container');
+            const canvas = document.getElementById('pdf-preview');
+            const closeBtn = document.getElementById('close-preview');
+            
+            if (!previewContainer || !canvas) return;
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+                const page = await pdf.getPage(1);
+                
+                // Adjust scale to fit container width if needed, or fixed scale
+                // For simplicity, use scale 1.0 or 1.2
+                const viewport = page.getViewport({ scale: 1.0 });
+                
+                // Responsive Scaling
+                const containerWidth = dropZone.offsetWidth - 40; // padding
+                const scale = containerWidth / viewport.width;
+                const scaledViewport = page.getViewport({ scale: Math.min(1.2, scale) });
+
+                const context = canvas.getContext('2d');
+                canvas.height = scaledViewport.height;
+                canvas.width = scaledViewport.width;
+                
+                const renderContext = {
+                    canvasContext: context,
+                    viewport: scaledViewport
+                };
+                
+                await page.render(renderContext).promise;
+                
+                previewContainer.classList.add('show');
+                
+                if (closeBtn) {
+                    closeBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        previewContainer.classList.remove('show');
+                    };
+                }
+            } catch (e) {
+                console.error('Preview error:', e);
+            }
+        }
+
+        // --- Usage & History Logic ---
+        function getUsageKey(userId) {
+            const today = new Date().toISOString().split('T')[0];
+            return `usage_${today}_${userId}`;
+        }
+
+        function checkUsage() {
+            const userId = currentUser ? currentUser.id : 'guest';
+            const key = getUsageKey(userId);
+            const usage = parseInt(localStorage.getItem(key) || '0');
+            
+            // Limits
+            let limit = 1; // Guest
+            if (currentUser) limit = 5; // Registered
+            // Mock Premium Check (if user metadata has plan)
+            // if (currentUser?.app_metadata?.plan === 'premium') limit = 9999;
+            
+            if (usage >= limit) {
+                showToast(`Daily limit reached (${usage}/${limit}). Please upgrade or try again tomorrow.`, 'error');
+                return false;
+            }
+            return true;
+        }
+
+        function incrementUsage() {
+            const userId = currentUser ? currentUser.id : 'guest';
+            const key = getUsageKey(userId);
+            const usage = parseInt(localStorage.getItem(key) || '0');
+            localStorage.setItem(key, usage + 1);
+            updateQuotaUI();
+        }
+
+        function updateQuotaUI() {
+            const display = document.getElementById('usage-display');
+            const countSpan = document.getElementById('quota-count');
+            
+            if (!display || !countSpan) return;
+
+            const userId = currentUser ? currentUser.id : 'guest';
+            const key = getUsageKey(userId);
+            const usage = parseInt(localStorage.getItem(key) || '0');
+            
+            let limit = 1;
+            if (currentUser) limit = 5;
+            
+            const remaining = Math.max(0, limit - usage);
+            countSpan.textContent = remaining;
+            
+            // Show for all users (Guest or Registered)
+            display.classList.remove('hidden');
+        }
+
+        function saveHistory(fileName, downloadUrl) {
+            if (!currentUser) return; // Only save for registered users
+            
+            const historyKey = `history_${currentUser.id}`;
+            const history = JSON.parse(localStorage.getItem(historyKey) || '[]');
+            
+            history.unshift({
+                name: fileName,
+                url: downloadUrl,
+                date: new Date().toLocaleString()
             });
+            
+            // Limit to last 20
+            if (history.length > 20) history.pop();
+            
+            localStorage.setItem(historyKey, JSON.stringify(history));
+            loadHistory();
+        }
+
+        function loadHistory() {
+            const section = document.getElementById('history-section');
+            const list = document.getElementById('history-list');
+            
+            if (!section || !list) return;
+            
+            if (!currentUser) {
+                section.classList.remove('show');
+                return;
+            }
+            
+            section.classList.add('show');
+            const historyKey = `history_${currentUser.id}`;
+            const history = JSON.parse(localStorage.getItem(historyKey) || '[]');
+            
+            if (history.length === 0) {
+                list.innerHTML = `<div class="empty-history" data-i18n="no_history">暫無記錄</div>`;
+            } else {
+                list.innerHTML = history.map(item => `
+                    <div class="history-item">
+                        <div class="history-info">
+                            <div class="history-name">${item.name}</div>
+                            <div class="history-date">${item.date}</div>
+                        </div>
+                        <a href="${item.url}" class="btn btn-sm btn-outline" download>下載</a>
+                    </div>
+                `).join('');
+            }
         }
 
         async function uploadFile(file) {
-            showProgress();
-            updateProgress(0, translations[currentLang]['uploading']);
-            showToast(translations[currentLang]['uploading'] + ': ' + file.name, 'info');
+            // UI Elements
+            const titleElement = dropZone.querySelector('h3');
+            const originalTextKey = titleElement.getAttribute('data-i18n');
+            const originalText = titleElement.textContent; // Fallback
+            
+            const progressWrapper = document.getElementById('progress-wrapper');
+            const progressBar = document.getElementById('progress-bar');
+            const progressPercent = document.getElementById('progress-percent');
+            const progressStatus = document.getElementById('progress-status');
+
+            // Show Progress UI
+            if (progressWrapper) progressWrapper.classList.add('show');
+            if (progressBar) progressBar.style.width = '0%';
+            if (progressPercent) progressPercent.textContent = '0%';
+            if (progressStatus) progressStatus.textContent = translations[currentLang]['processing'];
+
+            // Simulate Progress (since we can't easily track fetch upload/processing progress)
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                if (progress < 90) {
+                    // Slow down as it gets higher
+                    const increment = (90 - progress) / 20; 
+                    progress += Math.max(0.5, increment * Math.random());
+                    if (progress > 90) progress = 90;
+                    
+                    if (progressBar) progressBar.style.width = `${progress}%`;
+                    if (progressPercent) progressPercent.textContent = `${Math.round(progress)}%`;
+                }
+            }, 200);
             
             try {
                 // 1. Generate a unique file name
@@ -725,24 +621,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
                 const filePath = `${fileName}`;
 
-                // 2. Upload to Supabase Storage with progress tracking
-                updateProgress(20, translations[currentLang]['uploading'] + '... 20%');
-                
+                // 2. Upload to Supabase Storage
                 const { data, error } = await supabase.storage
                     .from('uploads')
                     .upload(filePath, file);
 
                 if (error) throw error;
 
-                updateProgress(50, translations[currentLang]['converting'] + '... 50%');
-                showToast(translations[currentLang]['converting'], 'info');
-
+                // 3. Trigger backend conversion process
+                console.log('Starting conversion...');
+                
                 const { data: { user } } = await supabase.auth.getUser();
                 const userId = user ? user.id : 'anon';
 
-                // 3. Call Google Cloud Run Backend
-                updateProgress(60, translations[currentLang]['converting'] + '... 60%');
-                
+                // Call Google Cloud Run Backend
                 const response = await fetch('https://bank2sheets-converter-202541778800.asia-east1.run.app/convert', {
                     method: 'POST',
                     headers: {
@@ -754,66 +646,53 @@ document.addEventListener('DOMContentLoaded', () => {
                     })
                 });
 
-                updateProgress(80, translations[currentLang]['converting'] + '... 80%');
-
                 const result = await response.json();
 
                 if (!response.ok) {
                     throw new Error(result.error || 'Conversion failed on server');
                 }
 
-                // 4. Success
-                updateProgress(100, translations[currentLang]['conversion_complete']);
-                showToast(translations[currentLang]['conversion_complete'], 'success', translations[currentLang]['success_msg'].replace('{filename}', file.name));
+                // 4. Success & Download
+                console.log('Conversion success:', result);
                 
-                // 5. Show preview option and download
-                updateProgress(100, translations[currentLang]['download_starting']);
+                // Complete Progress
+                clearInterval(progressInterval);
+                if (progressBar) progressBar.style.width = '100%';
+                if (progressPercent) progressPercent.textContent = '100%';
+
+                // Update Usage & History
+                incrementUsage();
+                saveHistory(file.name, result.download_url);
                 
-                // Create preview button
-                const previewBtn = document.createElement('button');
-                previewBtn.className = 'btn btn-outline';
-                previewBtn.textContent = translations[currentLang]['preview'];
-                previewBtn.style.marginTop = '1rem';
-                previewBtn.onclick = () => previewExcel(result.download_url);
-                
-                // Create download link
+                // Create a download link
                 const downloadLink = document.createElement('a');
                 downloadLink.href = result.download_url;
                 downloadLink.download = file.name.replace('.pdf', '.xlsx');
-                downloadLink.className = 'btn btn-black';
-                downloadLink.textContent = translations[currentLang]['download'];
-                downloadLink.style.marginTop = '1rem';
-                downloadLink.style.marginLeft = '0.5rem';
-                
-                // Add buttons to drop zone temporarily
-                const buttonContainer = document.createElement('div');
-                buttonContainer.style.display = 'flex';
-                buttonContainer.style.justifyContent = 'center';
-                buttonContainer.style.gap = '0.5rem';
-                buttonContainer.appendChild(previewBtn);
-                buttonContainer.appendChild(downloadLink);
-                
-                const existingButtons = dropZone.querySelector('.button-container');
-                if (existingButtons) existingButtons.remove();
-                buttonContainer.className = 'button-container';
-                dropZone.appendChild(buttonContainer);
-                
-                // Auto download after 2 seconds
-                setTimeout(() => {
-                    downloadLink.click();
-                }, 2000);
-                
-                // Update quota and history
-                await updateQuotaDisplay();
-                await loadConversionHistory();
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+
+                let msg = translations[currentLang]['success_msg'].replace('{filename}', file.name);
+                showToast(msg, 'success');
 
             } catch (error) {
+                clearInterval(progressInterval);
                 console.error('Upload/Conversion error:', error);
-                showToast(error.message || translations[currentLang]['auth_error_generic'], 'error', '轉換失敗');
-                hideProgress();
+                showToast('Error: ' + error.message, 'error');
+                if (progressBar) progressBar.style.backgroundColor = '#d32f2f'; // Red for error
             } finally {
-                // Keep progress at 100% if successful, otherwise hide it
-                // Progress will be reset when new file is selected
+                // Restore original text and reset UI after delay
+                setTimeout(() => {
+                    if (progressWrapper) progressWrapper.classList.remove('show');
+                    // Reset progress bar color and width
+                    if (progressBar) {
+                        progressBar.style.width = '0%';
+                        progressBar.style.backgroundColor = ''; 
+                    }
+                }, 5000);
+                
+                // Reset file input
+                fileInput.value = '';
             }
         }
     }

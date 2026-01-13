@@ -25,16 +25,10 @@
                     <button class="lang-option" data-lang="en">ENG</button>
                 </div>
             </div>
-            <div id="quota-display" class="quota-display" style="display: none;">
-                <span data-i18n="remaining_quota">剩餘轉換次數</span>: <span id="quota-count">-</span>
-            </div>
             <a href="upgrade.html" class="btn btn-outline" data-i18n="upgrade">升級</a>
             <button class="btn btn-solid" data-i18n="login">登入</button>
         </nav>
     </header>
-
-    <!-- Toast Notification Container -->
-    <div id="toast-container" class="toast-container"></div>
 
     <main>
         <!-- Hero Section -->
@@ -52,25 +46,29 @@
                 </div>
                 <h3 data-i18n="dropzone_title">點擊或拖放 PDF 檔案至此處</h3>
                 <p data-i18n="dropzone_subtitle">支援各大銀行月結單</p>
-                <p class="file-limit-hint" data-i18n="file_limit_hint">最大檔案大小: 10MB</p>
                 <input type="file" id="file-input" accept=".pdf" hidden>
                 <button class="btn btn-black" onclick="document.getElementById('file-input').click()" data-i18n="select_file">選擇檔案</button>
                 
                 <!-- Progress Bar -->
-                <div id="progress-container" class="progress-container" style="display: none;">
-                    <div class="progress-bar">
-                        <div id="progress-fill" class="progress-fill"></div>
+                <div id="progress-wrapper" class="progress-wrapper">
+                    <div class="progress-container">
+                        <div id="progress-bar" class="progress-bar"></div>
                     </div>
-                    <p id="progress-text" class="progress-text">0%</p>
+                    <div class="progress-text">
+                        <span id="progress-status" data-i18n="processing">正在處理...</span>
+                        <span id="progress-percent">0%</span>
+                    </div>
                 </div>
+            </div>
+        </section>
 
-                <!-- File Preview -->
-                <div id="file-preview-container" class="file-preview-container" style="display: none;">
-                    <div class="preview-header">
-                        <span id="preview-filename"></span>
-                        <button id="remove-file-btn" class="remove-file-btn" title="移除檔案">×</button>
-                    </div>
-                    <canvas id="pdf-preview" class="pdf-preview"></canvas>
+        <!-- History Section (Hidden for guests) -->
+        <section id="history-section" class="history-section hidden">
+            <div class="container">
+                <h2 data-i18n="history_title">轉換記錄</h2>
+                <div class="history-list" id="history-list">
+                    <!-- History items will be injected here -->
+                    <div class="empty-history" data-i18n="no_history">暫無記錄</div>
                 </div>
             </div>
         </section>
@@ -120,16 +118,6 @@
             </div>
         </section>
 
-        <!-- Conversion History Section (for logged in users) -->
-        <section id="history-section" class="history-section" style="display: none;">
-            <div class="container">
-                <h2 data-i18n="history_title">轉換歷史</h2>
-                <div id="history-list" class="history-list">
-                    <!-- History items will be inserted here -->
-                </div>
-            </div>
-        </section>
-
         <!-- Pricing/Limits Section -->
         <section class="pricing">
             <div class="container">
@@ -169,8 +157,10 @@
         </div>
     </footer>
 
-    <!-- PDF.js library for PDF preview -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
     <script type="module" src="app.js"></script>
 </body>
 </html>
