@@ -106,8 +106,8 @@ const translations = {
         'logout': 'Logout',
         'hero_title': 'The First Website to Convert Chinese & English Bank Statements',
         'hero_subtitle': 'Professional, Accurate, Secure. Convert your PDF ements to Excel instantly.',
-        'dropzone_title': 'Click or Drop PDF Here',
-        'dropzone_subtitle': 'Supports Major Bank Statements
+        'dropzone_title': 'Click or Drop PDF/Image Files Here',
+        'dropzone_subtitle': 'Supports Major Bank Statements (PDF, JPG, PNG)',
         'select_file': 'Select File',
         'features_title': 'Features',
         'feature1_title': 'Fast Conversion',
