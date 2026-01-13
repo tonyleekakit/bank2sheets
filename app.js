@@ -230,6 +230,9 @@ function setLanguage(lang) {
     }
 
     document.documentElement.lang = lang === 'zh' ? 'zh-HK' : 'en';
+
+    // Force update Quota UI to reflect language change (especially for Pro status text)
+    updateQuotaUI();
 }
 
 // --- Toast Notification Logic ---
