@@ -46,6 +46,12 @@
                 </div>
                 <h3 data-i18n="dropzone_title">點擊或拖放 PDF 檔案至此處</h3>
                 <p data-i18n="dropzone_subtitle">支援各大銀行月結單</p>
+                
+                <!-- Usage Limit Display -->
+                <div id="usage-display" class="usage-display hidden">
+                    <span data-i18n="remaining_quota">今日剩餘次數:</span> <span id="quota-count" class="font-bold">5</span>
+                </div>
+
                 <input type="file" id="file-input" accept=".pdf" hidden>
                 <button class="btn btn-black" onclick="document.getElementById('file-input').click()" data-i18n="select_file">選擇檔案</button>
             </div>

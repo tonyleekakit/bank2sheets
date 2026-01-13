@@ -431,7 +431,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (files.length > 0) {
                 const file = files[0];
                 if (file.type === 'application/pdf') {
-                    uploadFile(file);
+                    // Check Usage before Upload
+                    if (checkUsage()) {
+                        uploadFile(file);
+                    }
                 } else {
                     alert(translations[currentLang]['alert_pdf_only']);
                 }
@@ -487,6 +490,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 // 4. Success & Download
                 console.log('Conversion success:', result);
+
+                // Update Usage
+                incrementUsage();
                 
                 // Create a download link
                 const downloadLink = document.createElement('a');
