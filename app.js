@@ -527,6 +527,19 @@ async function handleSubscription(paymentLink) {
 
     // 2. Redirect to Stripe with user email pre-filled AND locale AND client_reference_id
     const paymentUrl = `${paymentLink}?prefilled_email=${encodeURIComponent(user.email)}&locale=${stripeLocale}&client_reference_id=${user.id}`;
+    
+    // GA4 Event Tracking
+    if (typeof gtag === 'function') {
+        gtag('event', 'begin_checkout', {
+            'currency': 'USD',
+            'value': paymentLink.includes('30') ? 30.00 : 55.00,
+            'items': [{
+                'item_id': paymentLink.includes('30') ? 'basic_plan' : 'pro_plan',
+                'item_name': paymentLink.includes('30') ? 'Basic Plan' : 'Pro Plan'
+            }]
+        });
+    }
+
     window.location.href = paymentUrl;
 }
 
@@ -681,6 +694,14 @@ if (dropZone && fileInput) {
             fileItem.classList.remove('uploading');
             fileItem.classList.add('complete');
             
+            // GA4 Event Tracking
+            if (typeof gtag === 'function') {
+                gtag('event', 'file_converted', {
+                    'file_type': file.type,
+                    'user_plan': (currentUser && currentUser.plan) ? currentUser.plan : 'free'
+                });
+            }
+
             // Replace actions with Download Button
             actionsDiv.innerHTML = `
                 <span class="status-text" style="color: #2e7d32;">Success</span>
