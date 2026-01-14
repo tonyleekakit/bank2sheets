@@ -282,6 +282,15 @@ function showToast(message, type = 'info') {
     };
 
     function getRecentUsage() {
+        // If logged in, usage is tracked by backend/Supabase and synced to currentUser.monthly_usage
+        // But for guest, we still use localStorage
+        if (currentUser) {
+            // Return dummy array with length equal to monthly_usage from profile
+            // This is a quick hack to make existing logic work without rewriting everything
+            // Ideally we should refactor checkUsage to look at currentUser.monthly_usage directly
+            return new Array(currentUser.monthly_usage || 0).fill(0);
+        }
+
         try {
             const usage = JSON.parse(localStorage.getItem('conversionUsage') || '[]');
             if (!Array.isArray(usage)) return [];
@@ -299,7 +308,19 @@ function showToast(message, type = 'info') {
     function checkUsage() {
         // 1. Check if user is pro
         const isPro = currentUser && currentUser.is_pro; 
-        if (isPro) return true;
+        if (isPro) {
+             // For Pro/Basic, check against monthly limit
+             const limit = (currentUser.plan === 'pro') ? USAGE_LIMITS.pro : USAGE_LIMITS.basic;
+             const used = currentUser.monthly_usage || 0;
+             if (used >= limit) {
+                 const msg = currentLang === 'zh' 
+                    ? `您已達到本月額度上限 (${limit}次)。` 
+                    : `Monthly quota reached (${limit}).`;
+                 alert(msg);
+                 return false;
+             }
+             return true;
+        }
 
         const limit = currentUser ? USAGE_LIMITS.user : USAGE_LIMITS.guest;
         const recentUsage = getRecentUsage();
@@ -315,9 +336,16 @@ function showToast(message, type = 'info') {
     }
 
     function incrementUsage() {
-        const usage = getRecentUsage();
-        usage.push(Date.now());
-        localStorage.setItem('conversionUsage', JSON.stringify(usage));
+        if (currentUser) {
+            // For logged in user, backend handles increment.
+            // We just optimistic update frontend state for immediate UI feedback
+            currentUser.monthly_usage = (currentUser.monthly_usage || 0) + 1;
+        } else {
+            // Guest: save to localStorage
+            const usage = getRecentUsage(); // this gets localStorage array for guest
+            usage.push(Date.now());
+            localStorage.setItem('conversionUsage', JSON.stringify(usage));
+        }
         updateQuotaUI();
     }
 
@@ -330,15 +358,19 @@ function showToast(message, type = 'info') {
         display.classList.remove('hidden');
 
         let limit = USAGE_LIMITS.guest;
+        let used = 0;
+
         if (currentUser) {
             if (currentUser.is_pro) {
                 limit = (currentUser.plan === 'pro') ? USAGE_LIMITS.pro : USAGE_LIMITS.basic;
             } else {
                 limit = USAGE_LIMITS.user;
             }
+            used = currentUser.monthly_usage || 0;
+        } else {
+            used = getRecentUsage().length;
         }
 
-        const used = getRecentUsage().length;
         const remaining = Math.max(0, limit - used);
         
         // Display for all users (Guest, Free, Basic, Pro)
