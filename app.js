@@ -6,8 +6,8 @@ const langMenu = document.getElementById('lang-menu');
 const langOptions = document.querySelectorAll('.lang-option');
 const currentLangText = document.getElementById('current-lang-text');
 
-// Initialize language from localStorage or default to 'zh'
-let currentLang = localStorage.getItem('preferredLang') || 'zh';
+// Initialize language from localStorage or default to 'en'
+let currentLang = localStorage.getItem('preferredLang') || 'en';
 let currentUser = null; // Global user state
 
 const translations = {
