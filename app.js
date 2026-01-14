@@ -359,15 +359,16 @@ async function checkUser() {
         const { data: { user } } = await supabase.auth.getUser();
         
         if (user) {
-            // Fetch Profile Data (is_pro status)
+            // Fetch Profile Data (is_pro status and plan)
             const { data: profile, error } = await supabase
                 .from('profiles')
-                .select('is_pro')
+                .select('is_pro, plan')
                 .eq('id', user.id)
                 .single();
             
             if (profile) {
                 user.is_pro = profile.is_pro;
+                user.plan = profile.plan;
             }
         }
         updateUI(user);
