@@ -346,9 +346,57 @@ function showToast(message, type = 'info') {
         if (currentUser && currentUser.is_pro) {
             display.style.backgroundColor = '#e8f5e9'; // Light green for paid
             display.style.border = '1px solid #c8e6c9';
+            
+            // Add Manage Subscription Link if not exists
+            if (!document.getElementById('manage-sub-link')) {
+                const link = document.createElement('a');
+                link.id = 'manage-sub-link';
+                link.href = '#';
+                link.textContent = currentLang === 'zh' ? '管理訂閱' : 'Manage Subscription';
+                link.style.display = 'block';
+                link.style.fontSize = '0.8rem';
+                link.style.marginTop = '4px';
+                link.style.color = '#2e7d32';
+                link.style.textDecoration = 'underline';
+                link.onclick = (e) => {
+                    e.preventDefault();
+                    manageSubscription();
+                };
+                display.appendChild(link);
+            }
         } else {
             display.style.backgroundColor = 'rgba(255, 255, 255, 0.5)';
             display.style.border = 'none';
+            // Remove link if exists (e.g. downgraded)
+            const link = document.getElementById('manage-sub-link');
+            if (link) link.remove();
+        }
+    }
+
+    async function manageSubscription() {
+        if (!currentUser) return;
+        
+        try {
+            const btn = document.getElementById('manage-sub-link');
+            if(btn) btn.textContent = 'Loading...';
+
+            const response = await fetch('https://bank2sheets-converter-202541778800.asia-east1.run.app/create-portal-session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: currentUser.id })
+            });
+            
+            const result = await response.json();
+            
+            if (result.url) {
+                window.location.href = result.url;
+            } else {
+                alert('Error opening portal: ' + (result.error || 'Unknown error'));
+                if(btn) btn.textContent = currentLang === 'zh' ? '管理訂閱' : 'Manage Subscription';
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Error: ' + e.message);
         }
     }
 
