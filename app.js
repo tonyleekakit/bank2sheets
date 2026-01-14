@@ -494,8 +494,8 @@ if (googleLoginBtn) {
     const subscribeProBtn = document.getElementById('subscribe-pro-btn');
     
     // Test Mode Payment Links (Replace with actual Basic/Pro links)
-    const STRIPE_BASIC_LINK = 'https://buy.stripe.com/test_3cIfZiacO6asfEp2F228803'; 
-    const STRIPE_PRO_LINK = 'https://buy.stripe.com/test_fZu9AUfx81Uc2RD3J628802'; 
+    const STRIPE_BASIC_LINK = 'https://buy.stripe.com/fZu9AUfx81Uc2RD3J628802'; 
+    const STRIPE_PRO_LINK = 'https://buy.stripe.com/3cIfZiacO6asfEp2F228803'; 
 
     if (subscribeBasicBtn) {
         subscribeBasicBtn.addEventListener('click', () => handleSubscription(STRIPE_BASIC_LINK));
