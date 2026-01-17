@@ -711,14 +711,21 @@ if (dropZone && fileInput) {
             // 3. Trigger Backend
             const { data: { user } } = await supabase.auth.getUser();
             const userId = user ? user.id : 'anon';
+            
+            // API URL Configuration
+            // const API_URL = 'http://localhost:8080/convert'; // Local
+            const API_URL = 'https://bank2sheets-converter-202541778800.asia-east1.run.app/convert'; // Production
 
-            const response = await fetch('https://bank2sheets-converter-202541778800.asia-east1.run.app/convert', {
+            console.log(`[Frontend] Calling API: ${API_URL}`);
+            
+            const response = await fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ file_path: filePath, user_id: userId })
             });
 
             const result = await response.json();
+            console.log('[Frontend] API Response:', result);
 
             if (!response.ok) throw new Error(result.error || 'Server Error');
 
@@ -750,17 +757,29 @@ if (dropZone && fileInput) {
                 document.body.removeChild(link);
             };
 
-            // Add Preview Button if table data exists
-            if (result.table_data && result.table_data.length > 0) {
-                 const previewBtn = document.createElement('button');
-                 previewBtn.className = 'btn-action btn-preview';
-                 previewBtn.textContent = 'Preview';
-                 previewBtn.style.marginLeft = '10px';
-                 previewBtn.style.cursor = 'pointer';
-                 previewBtn.style.padding = '2px 8px';
-                 previewBtn.onclick = () => showPreview(file, result.table_data);
-                 actionsDiv.appendChild(previewBtn);
-            }
+            // Add Preview Button
+            // If table_data is missing (old backend), we still show button but with warning
+            const hasTableData = result.table_data && result.table_data.length > 0;
+            
+            const previewBtn = document.createElement('button');
+            previewBtn.className = 'btn-action btn-preview';
+            previewBtn.textContent = 'Preview';
+            previewBtn.style.marginLeft = '10px';
+            previewBtn.style.cursor = 'pointer';
+            previewBtn.style.padding = '2px 8px';
+            previewBtn.style.backgroundColor = hasTableData ? '#2563eb' : '#9ca3af'; // Blue or Gray
+            previewBtn.style.color = 'white';
+            previewBtn.style.border = 'none';
+            previewBtn.style.borderRadius = '4px';
+            
+            previewBtn.onclick = () => {
+                if (hasTableData) {
+                    showPreview(file, result.table_data);
+                } else {
+                    alert('Preview not available: Backend did not return table data.\nPlease deploy the updated backend code to Cloud Run.\n\n(此功能需要更新後端程式碼才能運作)');
+                }
+            };
+            actionsDiv.appendChild(previewBtn);
 
             incrementUsage();
 
