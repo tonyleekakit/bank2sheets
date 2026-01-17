@@ -844,6 +844,21 @@ async function showPreview(file, tableData) {
             return;
         }
 
+        // Check for cell data (Debug helper)
+        const hasCells = tableData.some(t => t.cells && t.cells.length > 0);
+        if (!hasCells) {
+            const warning = document.createElement('div');
+            warning.style.padding = '10px';
+            warning.style.backgroundColor = '#fff3cd';
+            warning.style.color = '#856404';
+            warning.style.marginBottom = '10px';
+            warning.style.borderRadius = '4px';
+            warning.style.textAlign = 'center';
+            warning.innerHTML = '⚠️ <strong>注意：</strong> 未偵測到表格欄位數據。<br>這通常是因為<strong>後端程式碼尚未更新</strong>。<br>請務必執行後端部署指令：<code>gcloud run deploy ...</code>';
+            body.appendChild(warning);
+            console.warn('[Preview] Missing cell data. Please redeploy backend.');
+        }
+
         // Sort pages
         pagesWithTables.sort((a, b) => a - b);
 
