@@ -887,7 +887,13 @@ async function showPreview(file, tableData) {
             const tablesOnPage = tableData.filter(t => t.page_index === pageIndex);
             
             tablesOnPage.forEach(table => {
+                // Draw Table Border
                 if (table.vertices && table.vertices.length > 0) {
+                    overlayCtx.save(); // Save context state
+                    overlayCtx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+                    overlayCtx.lineWidth = 3;
+                    overlayCtx.fillStyle = 'rgba(255, 0, 0, 0.05)'; // lighter fill
+                    
                     overlayCtx.beginPath();
                     table.vertices.forEach((v, i) => {
                         const x = v.x * viewport.width;
@@ -898,6 +904,29 @@ async function showPreview(file, tableData) {
                     overlayCtx.closePath();
                     overlayCtx.stroke();
                     overlayCtx.fill();
+                    overlayCtx.restore(); // Restore context state
+                }
+
+                // Draw Cells
+                if (table.cells && table.cells.length > 0) {
+                    overlayCtx.save();
+                    overlayCtx.strokeStyle = 'rgba(0, 120, 215, 0.6)'; // Blue-ish
+                    overlayCtx.lineWidth = 1;
+                    
+                    table.cells.forEach(cell => {
+                        if (cell.vertices && cell.vertices.length > 0) {
+                            overlayCtx.beginPath();
+                            cell.vertices.forEach((v, i) => {
+                                const x = v.x * viewport.width;
+                                const y = v.y * viewport.height;
+                                if (i === 0) overlayCtx.moveTo(x, y);
+                                else overlayCtx.lineTo(x, y);
+                            });
+                            overlayCtx.closePath();
+                            overlayCtx.stroke();
+                        }
+                    });
+                    overlayCtx.restore();
                 }
             });
             
