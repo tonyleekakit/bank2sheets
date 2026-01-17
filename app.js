@@ -750,6 +750,18 @@ if (dropZone && fileInput) {
                 document.body.removeChild(link);
             };
 
+            // Add Preview Button if table data exists
+            if (result.table_data && result.table_data.length > 0) {
+                 const previewBtn = document.createElement('button');
+                 previewBtn.className = 'btn-action btn-preview';
+                 previewBtn.textContent = 'Preview';
+                 previewBtn.style.marginLeft = '10px';
+                 previewBtn.style.cursor = 'pointer';
+                 previewBtn.style.padding = '2px 8px';
+                 previewBtn.onclick = () => showPreview(file, result.table_data);
+                 actionsDiv.appendChild(previewBtn);
+            }
+
             incrementUsage();
 
         } catch (error) {
@@ -768,6 +780,115 @@ if (dropZone && fileInput) {
             // Optional: Show specific error in tooltip
             fileItem.title = error.message;
         }
+    }
+}
+
+async function showPreview(file, tableData) {
+    // Create Modal Elements
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    
+    const content = document.createElement('div');
+    content.className = 'modal-content';
+    
+    const header = document.createElement('div');
+    header.className = 'modal-header';
+    header.innerHTML = `<h3>Table Preview - ${file.name}</h3><button class="btn-close" style="background:none;border:none;font-size:1.5rem;cursor:pointer;">&times;</button>`;
+    
+    const body = document.createElement('div');
+    body.className = 'modal-body';
+    
+    content.appendChild(header);
+    content.appendChild(body);
+    overlay.appendChild(content);
+    document.body.appendChild(overlay);
+    
+    // Close Handler
+    header.querySelector('.btn-close').onclick = () => document.body.removeChild(overlay);
+    overlay.onclick = (e) => {
+        if (e.target === overlay) document.body.removeChild(overlay);
+    };
+
+    try {
+        // Load PDF
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+        
+        // Render pages with tables
+        // Note: tableData has page_index (0-based), PDF.js is 1-based
+        
+        // Get unique page indices that have tables
+        const pagesWithTables = [...new Set(tableData.map(t => t.page_index))];
+        
+        if (pagesWithTables.length === 0) {
+            body.innerHTML = '<p>No tables detected to visualize.</p>';
+            return;
+        }
+
+        // Sort pages
+        pagesWithTables.sort((a, b) => a - b);
+
+        for (const pageIndex of pagesWithTables) {
+            const pageNum = pageIndex + 1;
+            const page = await pdf.getPage(pageNum);
+            
+            const viewport = page.getViewport({ scale: 1.5 });
+            
+            const container = document.createElement('div');
+            container.className = 'canvas-container';
+            container.style.width = `${viewport.width}px`;
+            container.style.height = `${viewport.height}px`;
+            container.style.marginBottom = '20px'; // Spacing between pages
+            
+            // Canvas for PDF
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            const ctx = canvas.getContext('2d');
+            
+            await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+            
+            container.appendChild(canvas);
+            
+            // Overlay Canvas for Tables
+            const overlayCanvas = document.createElement('canvas');
+            overlayCanvas.width = viewport.width;
+            overlayCanvas.height = viewport.height;
+            overlayCanvas.style.position = 'absolute';
+            overlayCanvas.style.top = '0';
+            overlayCanvas.style.left = '0';
+            overlayCanvas.style.pointerEvents = 'none'; // Let clicks pass through
+            
+            const overlayCtx = overlayCanvas.getContext('2d');
+            overlayCtx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+            overlayCtx.lineWidth = 3;
+            overlayCtx.fillStyle = 'rgba(255, 0, 0, 0.1)';
+            
+            // Draw Tables for this page
+            const tablesOnPage = tableData.filter(t => t.page_index === pageIndex);
+            
+            tablesOnPage.forEach(table => {
+                if (table.vertices && table.vertices.length > 0) {
+                    overlayCtx.beginPath();
+                    table.vertices.forEach((v, i) => {
+                        const x = v.x * viewport.width;
+                        const y = v.y * viewport.height;
+                        if (i === 0) overlayCtx.moveTo(x, y);
+                        else overlayCtx.lineTo(x, y);
+                    });
+                    overlayCtx.closePath();
+                    overlayCtx.stroke();
+                    overlayCtx.fill();
+                }
+            });
+            
+            container.appendChild(overlayCanvas);
+            body.appendChild(container);
+        }
+        
+    } catch (e) {
+        console.error(e);
+        body.innerHTML = `<p style="color:red">Error rendering preview: ${e.message}</p>`;
     }
 }
 
