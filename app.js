@@ -415,7 +415,7 @@ function showToast(message, type = 'info') {
             const btn = document.getElementById('manage-sub-link');
             if(btn) btn.textContent = 'Loading...';
 
-            const response = await fetch('https://bank2sheets-converter-202541778800.asia-east1.run.app/create-portal-session', {
+            const response = await fetch(`${BACKEND_URL}/create-portal-session`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ user_id: currentUser.id })
@@ -599,7 +599,7 @@ if (dropZone && fileInput) {
     });
 
     function highlight(e) {
-        dropZone.style.borderColor = '#000';
+        dropZone.style.borderColor = '#217346';
         dropZone.style.backgroundColor = '#e0e0e0';
     }
 
@@ -675,7 +675,7 @@ if (dropZone && fileInput) {
             <div class="file-actions">
                 <span class="status-text">${translations[currentLang]['processing'] || 'Processing...'}</span>
                 <!-- Loading Spinner (Simple CSS circle) -->
-                <div class="spinner" style="width: 16px; height: 16px; border: 2px solid #ccc; border-top-color: #333; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                <div class="spinner" style="width: 16px; height: 16px; border: 2px solid #ccc; border-top-color: #217346; border-radius: 50%; animation: spin 1s linear infinite;"></div>
             </div>
         `;
         
@@ -767,7 +767,7 @@ if (dropZone && fileInput) {
             previewBtn.style.marginLeft = '10px';
             previewBtn.style.cursor = 'pointer';
             previewBtn.style.padding = '2px 8px';
-            previewBtn.style.backgroundColor = hasTableData ? '#2563eb' : '#9ca3af'; // Blue or Gray
+            previewBtn.style.backgroundColor = hasTableData ? '#217346' : '#9ca3af'; // Blue or Gray
             previewBtn.style.color = 'white';
             previewBtn.style.border = 'none';
             previewBtn.style.borderRadius = '4px';
