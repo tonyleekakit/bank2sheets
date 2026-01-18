@@ -858,7 +858,10 @@ async function showPreview(file, tableData) {
              // --- Image Handling ---
             const img = new Image();
             img.src = URL.createObjectURL(file);
-            await new Promise(resolve => img.onload = resolve);
+            await new Promise((resolve, reject) => {
+                img.onload = resolve;
+                img.onerror = reject;
+            });
             
             // For Document AI, page_index is usually 0 for single images.
             // We'll just render the image once.
@@ -912,6 +915,7 @@ async function showPreview(file, tableData) {
 
         } else {
             // --- PDF Handling ---
+            // Only try to parse as PDF if it is NOT an image
             const arrayBuffer = await file.arrayBuffer();
             const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
 
