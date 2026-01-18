@@ -833,10 +833,39 @@ async function showPreview(file, tableData) {
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
         
-        // tableData structure changed: now array of pages, each with {tables: [], blocks: []}
-        // Let's iterate all pages available in tableData
+        // Check for tableData structure
+        // Old structure: Array of objects with {page_index, vertices, cells}
+        // New structure: Array of objects with {page_index, tables: [], blocks: []}
         
-        const pagesData = tableData; // Renaming for clarity
+        let pagesData = [];
+        
+        // Normalize data structure
+        if (tableData && tableData.length > 0) {
+            if (tableData[0].tables || tableData[0].blocks) {
+                // Already new structure
+                pagesData = tableData;
+            } else {
+                // Convert old structure to new structure for backward compatibility
+                // Old: [{page_index: 0, vertices: [...], cells: [...]}, {page_index: 0, vertices: [...]}]
+                // We need to group by page_index
+                const pagesMap = {};
+                tableData.forEach(item => {
+                    if (!pagesMap[item.page_index]) {
+                        pagesMap[item.page_index] = {
+                            page_index: item.page_index,
+                            tables: [],
+                            blocks: []
+                        };
+                    }
+                    // Treat old item as a table
+                    pagesMap[item.page_index].tables.push({
+                        vertices: item.vertices,
+                        cells: item.cells
+                    });
+                });
+                pagesData = Object.values(pagesMap);
+            }
+        }
         
         if (!pagesData || pagesData.length === 0) {
             body.innerHTML = '<p>No data detected to visualize.</p>';
