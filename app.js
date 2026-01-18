@@ -829,14 +829,7 @@ async function showPreview(file, tableData) {
     };
 
     try {
-        // Load PDF
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-        
-        // Render pages with tables
-        // Note: tableData has page_index (0-based), PDF.js is 1-based
-        
-        // Get unique page indices that have tables
+        const isImage = file.type.startsWith('image/');
         const pagesWithTables = [...new Set(tableData.map(t => t.page_index))];
         
         if (pagesWithTables.length === 0) {
@@ -859,94 +852,112 @@ async function showPreview(file, tableData) {
             console.warn('[Preview] Missing cell data. Please redeploy backend.');
         }
 
-        // Sort pages
         pagesWithTables.sort((a, b) => a - b);
 
-        for (const pageIndex of pagesWithTables) {
-            const pageNum = pageIndex + 1;
-            const page = await pdf.getPage(pageNum);
+        if (isImage) {
+             // --- Image Handling ---
+            const img = new Image();
+            img.src = URL.createObjectURL(file);
+            await new Promise(resolve => img.onload = resolve);
             
-            const viewport = page.getViewport({ scale: 1.5 });
+            // For Document AI, page_index is usually 0 for single images.
+            // We'll just render the image once.
+            const viewport = { width: img.width, height: img.height };
             
+            // Scale down if too large for modal
+            const MAX_WIDTH = 800;
+            let scale = 1;
+            if (viewport.width > MAX_WIDTH) {
+                scale = MAX_WIDTH / viewport.width;
+            }
+            
+            const displayWidth = viewport.width * scale;
+            const displayHeight = viewport.height * scale;
+
             const container = document.createElement('div');
             container.className = 'canvas-container';
-            container.style.width = `${viewport.width}px`;
-            container.style.height = `${viewport.height}px`;
-            container.style.marginBottom = '20px'; // Spacing between pages
-            
-            // Canvas for PDF
-            const canvas = document.createElement('canvas');
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            const ctx = canvas.getContext('2d');
-            
-            await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-            
-            container.appendChild(canvas);
-            
-            // Overlay Canvas for Tables
+            container.style.width = `${displayWidth}px`;
+            container.style.height = `${displayHeight}px`;
+            container.style.marginBottom = '20px';
+            container.style.position = 'relative'; // Important for overlay
+
+            // Image Element
+            const imgEl = document.createElement('img');
+            imgEl.src = img.src;
+            imgEl.style.width = '100%';
+            imgEl.style.height = '100%';
+            container.appendChild(imgEl);
+
+            // Overlay Canvas
             const overlayCanvas = document.createElement('canvas');
-            overlayCanvas.width = viewport.width;
-            overlayCanvas.height = viewport.height;
+            overlayCanvas.width = displayWidth;
+            overlayCanvas.height = displayHeight;
             overlayCanvas.style.position = 'absolute';
             overlayCanvas.style.top = '0';
             overlayCanvas.style.left = '0';
-            overlayCanvas.style.pointerEvents = 'none'; // Let clicks pass through
-            
-            const overlayCtx = overlayCanvas.getContext('2d');
-            overlayCtx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
-            overlayCtx.lineWidth = 3;
-            overlayCtx.fillStyle = 'rgba(255, 0, 0, 0.1)';
-            
-            // Draw Tables for this page
-            const tablesOnPage = tableData.filter(t => t.page_index === pageIndex);
-            
-            tablesOnPage.forEach(table => {
-                // Draw Table Border
-                if (table.vertices && table.vertices.length > 0) {
-                    overlayCtx.save(); // Save context state
-                    overlayCtx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
-                    overlayCtx.lineWidth = 3;
-                    overlayCtx.fillStyle = 'rgba(255, 0, 0, 0.05)'; // lighter fill
-                    
-                    overlayCtx.beginPath();
-                    table.vertices.forEach((v, i) => {
-                        const x = v.x * viewport.width;
-                        const y = v.y * viewport.height;
-                        if (i === 0) overlayCtx.moveTo(x, y);
-                        else overlayCtx.lineTo(x, y);
-                    });
-                    overlayCtx.closePath();
-                    overlayCtx.stroke();
-                    overlayCtx.fill();
-                    overlayCtx.restore(); // Restore context state
-                }
+            overlayCanvas.style.pointerEvents = 'none';
 
-                // Draw Cells
-                if (table.cells && table.cells.length > 0) {
-                    overlayCtx.save();
-                    overlayCtx.strokeStyle = 'rgba(0, 120, 215, 0.6)'; // Blue-ish
-                    overlayCtx.lineWidth = 1;
-                    
-                    table.cells.forEach(cell => {
-                        if (cell.vertices && cell.vertices.length > 0) {
-                            overlayCtx.beginPath();
-                            cell.vertices.forEach((v, i) => {
-                                const x = v.x * viewport.width;
-                                const y = v.y * viewport.height;
-                                if (i === 0) overlayCtx.moveTo(x, y);
-                                else overlayCtx.lineTo(x, y);
-                            });
-                            overlayCtx.closePath();
-                            overlayCtx.stroke();
-                        }
-                    });
-                    overlayCtx.restore();
-                }
-            });
+            const overlayCtx = overlayCanvas.getContext('2d');
+            // Scale context to match image scaling
+            overlayCtx.scale(scale, scale);
             
+            // Draw Tables
+            // Images usually have only 1 page (index 0), but let's iterate just in case
+            tableData.forEach(table => {
+                 drawTableOverlay(overlayCtx, table, viewport);
+            });
+
             container.appendChild(overlayCanvas);
             body.appendChild(container);
+
+        } else {
+            // --- PDF Handling ---
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+
+            for (const pageIndex of pagesWithTables) {
+                const pageNum = pageIndex + 1;
+                const page = await pdf.getPage(pageNum);
+                
+                const viewport = page.getViewport({ scale: 1.5 });
+                
+                const container = document.createElement('div');
+                container.className = 'canvas-container';
+                container.style.width = `${viewport.width}px`;
+                container.style.height = `${viewport.height}px`;
+                container.style.marginBottom = '20px'; // Spacing between pages
+                
+                // Canvas for PDF
+                const canvas = document.createElement('canvas');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                const ctx = canvas.getContext('2d');
+                
+                await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+                
+                container.appendChild(canvas);
+                
+                // Overlay Canvas for Tables
+                const overlayCanvas = document.createElement('canvas');
+                overlayCanvas.width = viewport.width;
+                overlayCanvas.height = viewport.height;
+                overlayCanvas.style.position = 'absolute';
+                overlayCanvas.style.top = '0';
+                overlayCanvas.style.left = '0';
+                overlayCanvas.style.pointerEvents = 'none'; // Let clicks pass through
+                
+                const overlayCtx = overlayCanvas.getContext('2d');
+                
+                // Draw Tables for this page
+                const tablesOnPage = tableData.filter(t => t.page_index === pageIndex);
+                
+                tablesOnPage.forEach(table => {
+                    drawTableOverlay(overlayCtx, table, viewport);
+                });
+                
+                container.appendChild(overlayCanvas);
+                body.appendChild(container);
+            }
         }
         
     } catch (e) {
@@ -954,6 +965,54 @@ async function showPreview(file, tableData) {
         body.innerHTML = `<p style="color:red">Error rendering preview: ${e.message}</p>`;
     }
 }
+
+function drawTableOverlay(ctx, table, viewport) {
+    // Helper to draw tables
+    // viewport can be PDF viewport object OR simple {width, height} object
+    
+    // Draw Table Border
+    if (table.vertices && table.vertices.length > 0) {
+        ctx.save(); 
+        ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+        ctx.lineWidth = 3;
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.05)'; 
+        
+        ctx.beginPath();
+        table.vertices.forEach((v, i) => {
+            const x = v.x * viewport.width;
+            const y = v.y * viewport.height;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        });
+        ctx.closePath();
+        ctx.stroke();
+        ctx.fill();
+        ctx.restore(); 
+    }
+
+    // Draw Cells
+    if (table.cells && table.cells.length > 0) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(0, 120, 215, 0.6)'; // Blue-ish
+        ctx.lineWidth = 1;
+        
+        table.cells.forEach(cell => {
+            if (cell.vertices && cell.vertices.length > 0) {
+                ctx.beginPath();
+                cell.vertices.forEach((v, i) => {
+                    const x = v.x * viewport.width;
+                    const y = v.y * viewport.height;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                });
+                ctx.closePath();
+                ctx.stroke();
+            }
+        });
+        ctx.restore();
+    }
+}
+
 
 // Initialize App
 // Move initialization to the end to ensure all functions and constants (like USAGE_LIMITS) are defined
