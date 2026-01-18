@@ -833,57 +833,38 @@ async function showPreview(file, tableData) {
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
         
-        // Check for tableData structure
-        // Old structure: Array of objects with {page_index, vertices, cells}
-        // New structure: Array of objects with {page_index, tables: [], blocks: []}
+        // Render pages with tables
+        // Note: tableData has page_index (0-based), PDF.js is 1-based
         
-        let pagesData = [];
+        // Get unique page indices that have tables
+        const pagesWithTables = [...new Set(tableData.map(t => t.page_index))];
         
-        // Normalize data structure
-        if (tableData && tableData.length > 0) {
-            if (tableData[0].tables || tableData[0].blocks) {
-                // Already new structure
-                pagesData = tableData;
-            } else {
-                // Convert old structure to new structure for backward compatibility
-                // Old: [{page_index: 0, vertices: [...], cells: [...]}, {page_index: 0, vertices: [...]}]
-                // We need to group by page_index
-                const pagesMap = {};
-                tableData.forEach(item => {
-                    if (!pagesMap[item.page_index]) {
-                        pagesMap[item.page_index] = {
-                            page_index: item.page_index,
-                            tables: [],
-                            blocks: []
-                        };
-                    }
-                    // Treat old item as a table
-                    pagesMap[item.page_index].tables.push({
-                        vertices: item.vertices,
-                        cells: item.cells
-                    });
-                });
-                pagesData = Object.values(pagesMap);
-            }
-        }
-        
-        if (!pagesData || pagesData.length === 0) {
-            body.innerHTML = '<p>No data detected to visualize.</p>';
+        if (pagesWithTables.length === 0) {
+            body.innerHTML = '<p>No tables detected to visualize.</p>';
             return;
         }
 
-        // Sort pages by index just in case
-        pagesData.sort((a, b) => a.page_index - b.page_index);
+        // Check for cell data (Debug helper)
+        const hasCells = tableData.some(t => t.cells && t.cells.length > 0);
+        if (!hasCells) {
+            const warning = document.createElement('div');
+            warning.style.padding = '10px';
+            warning.style.backgroundColor = '#fff3cd';
+            warning.style.color = '#856404';
+            warning.style.marginBottom = '10px';
+            warning.style.borderRadius = '4px';
+            warning.style.textAlign = 'center';
+            warning.innerHTML = '⚠️ <strong>注意：</strong> 未偵測到表格欄位數據。<br>這通常是因為<strong>後端程式碼尚未更新</strong>。<br>請務必執行後端部署指令：<code>gcloud run deploy ...</code>';
+            body.appendChild(warning);
+            console.warn('[Preview] Missing cell data. Please redeploy backend.');
+        }
 
-        for (const pageData of pagesData) {
-            const pageNum = pageData.page_index + 1;
-            let page;
-            try {
-                page = await pdf.getPage(pageNum);
-            } catch (err) {
-                console.warn(`Page ${pageNum} not found in PDF`, err);
-                continue;
-            }
+        // Sort pages
+        pagesWithTables.sort((a, b) => a - b);
+
+        for (const pageIndex of pagesWithTables) {
+            const pageNum = pageIndex + 1;
+            const page = await pdf.getPage(pageNum);
             
             const viewport = page.getViewport({ scale: 1.5 });
             
@@ -913,87 +894,56 @@ async function showPreview(file, tableData) {
             overlayCanvas.style.pointerEvents = 'none'; // Let clicks pass through
             
             const overlayCtx = overlayCanvas.getContext('2d');
+            overlayCtx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+            overlayCtx.lineWidth = 3;
+            overlayCtx.fillStyle = 'rgba(255, 0, 0, 0.1)';
             
-            // 1. Draw Page Blocks (Non-table text) - Gray/Yellow
-            if (pageData.blocks) {
-                overlayCtx.save();
-                overlayCtx.strokeStyle = 'rgba(255, 165, 0, 0.5)'; // Orange
-                overlayCtx.fillStyle = 'rgba(255, 165, 0, 0.1)';
-                overlayCtx.lineWidth = 1;
-                
-                pageData.blocks.forEach(block => {
-                    if (block.vertices && block.vertices.length > 0) {
-                         overlayCtx.beginPath();
-                         block.vertices.forEach((v, i) => {
-                             const x = v.x * viewport.width;
-                             const y = v.y * viewport.height;
-                             if (i === 0) overlayCtx.moveTo(x, y);
-                             else overlayCtx.lineTo(x, y);
-                         });
-                         overlayCtx.closePath();
-                         overlayCtx.stroke();
-                         // overlayCtx.fill(); // Optional: fill blocks
-                    }
-                });
-                overlayCtx.restore();
-            }
+            // Draw Tables for this page
+            const tablesOnPage = tableData.filter(t => t.page_index === pageIndex);
+            
+            tablesOnPage.forEach(table => {
+                // Draw Table Border
+                if (table.vertices && table.vertices.length > 0) {
+                    overlayCtx.save(); // Save context state
+                    overlayCtx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+                    overlayCtx.lineWidth = 3;
+                    overlayCtx.fillStyle = 'rgba(255, 0, 0, 0.05)'; // lighter fill
+                    
+                    overlayCtx.beginPath();
+                    table.vertices.forEach((v, i) => {
+                        const x = v.x * viewport.width;
+                        const y = v.y * viewport.height;
+                        if (i === 0) overlayCtx.moveTo(x, y);
+                        else overlayCtx.lineTo(x, y);
+                    });
+                    overlayCtx.closePath();
+                    overlayCtx.stroke();
+                    overlayCtx.fill();
+                    overlayCtx.restore(); // Restore context state
+                }
 
-            // 2. Draw Tables
-            if (pageData.tables) {
-                pageData.tables.forEach(table => {
-                    // Draw Table Border - Red
-                    if (table.vertices && table.vertices.length > 0) {
-                        overlayCtx.save(); 
-                        overlayCtx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
-                        overlayCtx.lineWidth = 3;
-                        overlayCtx.fillStyle = 'rgba(255, 0, 0, 0.05)'; 
-                        
-                        overlayCtx.beginPath();
-                        table.vertices.forEach((v, i) => {
-                            const x = v.x * viewport.width;
-                            const y = v.y * viewport.height;
-                            if (i === 0) overlayCtx.moveTo(x, y);
-                            else overlayCtx.lineTo(x, y);
-                        });
-                        overlayCtx.closePath();
-                        overlayCtx.stroke();
-                        overlayCtx.fill();
-                        overlayCtx.restore(); 
-                    }
-
-                    // Draw Cells
-                    if (table.cells && table.cells.length > 0) {
-                        overlayCtx.save();
-                        overlayCtx.lineWidth = 1;
-                        
-                        table.cells.forEach(cell => {
-                            if (cell.vertices && cell.vertices.length > 0) {
-                                overlayCtx.beginPath();
-                                cell.vertices.forEach((v, i) => {
-                                    const x = v.x * viewport.width;
-                                    const y = v.y * viewport.height;
-                                    if (i === 0) overlayCtx.moveTo(x, y);
-                                    else overlayCtx.lineTo(x, y);
-                                });
-                                overlayCtx.closePath();
-                                
-                                // Blue for Grid (All Cells)
-                                overlayCtx.strokeStyle = 'rgba(0, 120, 215, 0.3)';
-                                overlayCtx.stroke();
-
-                                // Green for Text (Non-empty Cells)
-                                if (cell.text && cell.text.trim().length > 0) {
-                                    overlayCtx.strokeStyle = 'rgba(0, 200, 0, 1.0)'; // Bright Green
-                                    overlayCtx.lineWidth = 2;
-                                    overlayCtx.stroke();
-                                    overlayCtx.lineWidth = 1; // Reset
-                                }
-                            }
-                        });
-                        overlayCtx.restore();
-                    }
-                });
-            }
+                // Draw Cells
+                if (table.cells && table.cells.length > 0) {
+                    overlayCtx.save();
+                    overlayCtx.strokeStyle = 'rgba(0, 120, 215, 0.6)'; // Blue-ish
+                    overlayCtx.lineWidth = 1;
+                    
+                    table.cells.forEach(cell => {
+                        if (cell.vertices && cell.vertices.length > 0) {
+                            overlayCtx.beginPath();
+                            cell.vertices.forEach((v, i) => {
+                                const x = v.x * viewport.width;
+                                const y = v.y * viewport.height;
+                                if (i === 0) overlayCtx.moveTo(x, y);
+                                else overlayCtx.lineTo(x, y);
+                            });
+                            overlayCtx.closePath();
+                            overlayCtx.stroke();
+                        }
+                    });
+                    overlayCtx.restore();
+                }
+            });
             
             container.appendChild(overlayCanvas);
             body.appendChild(container);
