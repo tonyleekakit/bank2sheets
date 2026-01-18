@@ -445,13 +445,14 @@ async function checkUser() {
             // Fetch Profile Data (is_pro status and plan)
             const { data: profile, error } = await supabase
                 .from('profiles')
-                .select('is_pro, plan')
+                .select('is_pro, plan, monthly_usage')
                 .eq('id', user.id)
                 .single();
             
             if (profile) {
                 user.is_pro = profile.is_pro;
                 user.plan = profile.plan;
+                user.monthly_usage = profile.monthly_usage;
             }
         }
         updateUI(user);
