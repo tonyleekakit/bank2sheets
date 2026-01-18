@@ -925,7 +925,6 @@ async function showPreview(file, tableData) {
                 // Draw Cells
                 if (table.cells && table.cells.length > 0) {
                     overlayCtx.save();
-                    overlayCtx.strokeStyle = 'rgba(0, 120, 215, 0.6)'; // Blue-ish
                     overlayCtx.lineWidth = 1;
                     
                     table.cells.forEach(cell => {
@@ -938,7 +937,18 @@ async function showPreview(file, tableData) {
                                 else overlayCtx.lineTo(x, y);
                             });
                             overlayCtx.closePath();
+                            
+                            // Blue for Grid (All Cells)
+                            overlayCtx.strokeStyle = 'rgba(0, 120, 215, 0.3)';
                             overlayCtx.stroke();
+
+                            // Green for Text (Non-empty Cells)
+                            if (cell.text && cell.text.trim().length > 0) {
+                                overlayCtx.strokeStyle = 'rgba(0, 200, 0, 1.0)'; // Bright Green
+                                overlayCtx.lineWidth = 2;
+                                overlayCtx.stroke();
+                                overlayCtx.lineWidth = 1; // Reset
+                            }
                         }
                     });
                     overlayCtx.restore();
