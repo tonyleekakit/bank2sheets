@@ -573,7 +573,11 @@ async function handleSubscription(paymentLink) {
         });
     }
 
-    window.location.href = paymentUrl;
+    if (typeof window.gtagSendEvent === 'function') {
+        window.gtagSendEvent(paymentUrl);
+    } else {
+        window.location.href = paymentUrl;
+    }
 }
 
 // Existing File Upload Logic (Only if on homepage)
